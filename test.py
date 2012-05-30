@@ -5,7 +5,9 @@ from opencv.highgui import *
 
 i = cvLoadImage('captcha.jpg', CV_8UC1)
 res = cvCreateImage(cvGetSize(i), IPL_DEPTH_8U, 1)
+tmp = cvCreateImage(cvGetSize(i), IPL_DEPTH_8U, 1)
 cvThreshold(i, res, 100, 255, CV_THRESH_BINARY_INV);
+cvCopy(res, tmp)
 
 mat = cvGetMat(res)
 treshold = 7
@@ -29,12 +31,30 @@ bounds = []
 for i in xrange(0, len(divs), 2):
 	bounds.append((divs[i], divs[i + 1]))
 
-
+# Покажем рамки
+white = (255, 255, 255)
 for bound in bounds:
 	p1 = (bound[0], 0)
-	p2 = (bound[1], mat.rows - 2)
-	white = (255, 255, 255)
-	cvRectangle(res, p1, p2, white)
+	p2 = (bound[1], mat.rows - 1)	
+	cvRectangle(tmp, p1, p2, white)
+
+cvNamedWindow( 'test', 1 )
+cvShowImage( 'test', tmp)
+i = 0
+storage = cvCreateMemStorage(0)
+for bound in bounds:
+	sub = cvGetSubRect(res, (bound[0], 0, bound[1] - bound[0], mat.rows))
+	tmp = cvCreateImage(cvGetSize(sub), IPL_DEPTH_8U, 1)
+	#cvCopy(sub, tmp)
+	nb, contours = cvFindContours(sub, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE)
+	cvDrawContours(tmp, contours, white, white, 1)
+	cvNamedWindow( 'test%s' % i, 1 )
+	cvShowImage( 'test%s' % i, tmp)
+	i+= 1
+
+	cvWaitKey(0)
+
+
 
 
 
