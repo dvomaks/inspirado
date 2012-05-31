@@ -55,9 +55,9 @@ class Browser(QWebPage):
     # pull - что выкачивать
     def get(self, url, headers = None, pull = None):
         log.info('get(): url %s' % colorize(url))
-        self.js('window.location = "%s"' % url)
-        self.loop.exec_()
-        self.jquerify()
+        self.js('window.location = "%s"' % url)     # идем на url
+        self.loop.exec_()                           # ждем пока досасется страница
+        self.jquerify()                             # подгружаем jQuery
 
     # Сохранение высосанных данных (например картинок)
     # Данные берутся из кеша (для этого его и поправили) по url'у
@@ -78,7 +78,7 @@ class Browser(QWebPage):
         img.loadFromData(cached.readAll())
         return img
 
-    # Показ отладночго окна
+    # Показ отладочного окна
     def show(self):
         self.shown = True
         self.view = QWebView()
