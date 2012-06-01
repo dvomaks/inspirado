@@ -11,6 +11,7 @@ from opencv import adaptors
 from opencv.adaptors import PIL2Ipl
 from PIL import Image
 
+# преобразование изображений разных форматов
 def QIm2PIL(qimg):
     buffer = QBuffer()
     buffer.open(QIODevice.WriteOnly)
@@ -45,6 +46,7 @@ def Ipl2QIm(iplimg):
     return PIL2QIm(pilimg)
 
 
+# хитрый класс
 class Transformer(QObject):
 
     def __init__(self, orig):
@@ -53,34 +55,41 @@ class Transformer(QObject):
         self.pieces = []
         self.info = []
 
+    # переопределение []
     def __getitem__(self, key):
         return self.transforms[key]
 
     def __setitem__(self, key, value):
         self.transforms[key] = value
 
+    # подгрузка изображения
     def load(self, key, path):
         self.transforms[key] = cvLoadImage(path)
 
+    # копирование изображения
     def clone(self, key, src):
         self.transforms[key] = cvCloneImage(src)
 
-    def grayscale(self, key, src, flags = 0):
+    # преобразование в оттенки серого
+    def grayscale(self, key, src, flags=0):
         res = cvCreateImage(cvGetSize(src), src.depth, 1)
         cvConvertImage(src, res, flags)
         self.transforms[key] = res
 
+    # бинаризация
     def binarize(self, key, src, threshold, method):
         res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
         cvThreshold(src, res, threshold, 255, method)
         self.transforms[key] = res
 
-    def resize(self, key, src, scaleX, scaleY, method = 1):
+    # масштабирование
+    def resize(self, key, src, scaleX, scaleY, method=1):
         res = cvCreateImage((src.width * scaleX, src.height * scaleY), src.depth, src.nChannels)
         cvResize(src, res, method)
         self.transforms[key] = res
 
-    def morphology(self, key, src, method, iterations = 1, kernel = None):
+    # морфологические преобразования
+    def morphology(self, key, src, method, iterations=1, kernel=None):
         tmp = cvCreateImage(cvGetSize(src), src.depth, src.nChannels)
         if not kernel:
             kernel = cvCreateStructuringElementEx(3, 3, 1, 1, CV_SHAPE_ELLIPSE)
@@ -95,6 +104,7 @@ class Transformer(QObject):
             cvMorphologyEx(src, res, tmp, kernel, method, iterations)
             self.transforms[key] = res
 
+    # разделение на символы на основе контурноо анализа
     def contourSplit(self, key, src, mode, method, externalColor, internalColor):
         storage = cvCreateMemStorage(0)
         tmp = cvCloneImage(src)
@@ -114,11 +124,9 @@ class Transformer(QObject):
             cvCopy(roi, cnt)
             self.pieces.append(Transformer(Ipl2QIm(cnt)))
             rect = cvMinAreaRect2(contour)
-            self.info.append((cnt,
-             rect.angle,
-             rect.center,
-             contour))
+            self.info.append((cnt, rect.angle, rect.center, contour))
 
+    # разбиение на символы на основе 'узких мест'
     def breakSplit(self, key, src, threshold):
         pass
 
