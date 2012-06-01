@@ -12,7 +12,7 @@ from opencv import adaptors
 from opencv.adaptors import PIL2Ipl
 from PIL import Image
 
-# преобразование изображений разных форматов
+# преобразование изображений разных форматов друг в друга
 def QIm2PIL(qimg):
     buffer = QBuffer()
     buffer.open(QIODevice.WriteOnly)
@@ -47,13 +47,18 @@ def Ipl2QIm(iplimg):
     return PIL2QIm(pilimg)
 
 
+# и несколько полезных констант
+white = (255, 255, 255)
+gray = (100, 100, 100)
+
+
 # хитрый класс
 class Transformer(QObject):
 
     def __init__(self, orig):
         QObject.__init__(self)
         self.transforms = OrderedDict({'ORIG': QIm2Ipl(orig)})
-        self.pieces = []
+        self.symbols = []
         self.info = []
 
     # переопределение []
@@ -63,7 +68,7 @@ class Transformer(QObject):
     def __setitem__(self, key, value):
         self.transforms[key] = value
 
-    # подгрузка изображения
+    # подгрузка изображения из path
     def load(self, key, path):
         self.transforms[key] = cvLoadImage(path)
 
@@ -77,7 +82,7 @@ class Transformer(QObject):
         cvConvertImage(src, res, flags)
         self.transforms[key] = res
 
-    # бинаризация
+    # бинаризация по указанному порогу
     def binarize(self, key, src, threshold, method):
         res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
         cvThreshold(src, res, threshold, 255, method)
@@ -90,6 +95,7 @@ class Transformer(QObject):
         self.transforms[key] = res
 
     # морфологические преобразования
+    # method - тип преобразования: 0-erode, 1-dilate, 2-....
     def morphology(self, key, src, method, iterations=1, kernel=None):
         tmp = cvCreateImage(cvGetSize(src), src.depth, src.nChannels)
         if not kernel:
@@ -105,14 +111,14 @@ class Transformer(QObject):
             cvMorphologyEx(src, res, tmp, kernel, method, iterations)
             self.transforms[key] = res
 
-    # разделение на символы на основе контурноо анализа
-    def contourSplit(self, key, src, mode, method, externalColor, internalColor):
+    # разделение на символы на основе контурного анализа
+    def contourSplit(self, key, src):
         storage = cvCreateMemStorage(0)
         tmp = cvCloneImage(src)
         res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
 
-        num, contours = cvFindContours(tmp, storage, sizeof_CvContour, mode, method, (0, 0))
-        cvDrawContours(res, contours, externalColor, internalColor, 1)
+        num, contours = cvFindContours(tmp, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, (0, 0))
+        cvDrawContours(res, contours, gray, gray, 1)
         self.transforms[key] = res
 
         for contour in contours.hrange():
@@ -122,63 +128,79 @@ class Transformer(QObject):
             cvRectangle(res, pt1, pt2, externalColor)
             roi = cvGetSubRect(src, rect)
             cnt = cvCreateImage(cvGetSize(roi), IPL_DEPTH_8U, 1)
-            white = (255, 255, 255)
-            cvSet(cnt, white)
+
             cvCopy(roi, cnt)
-            self.pieces.append(Transformer(Ipl2QIm(cnt)))
+            self.symbols.append(Transformer(Ipl2QIm(cnt)))
             rect = cvMinAreaRect2(contour)
             self.info.append((cnt, rect.angle, rect.center, contour))
 
+
     # разбиение на символы на основе 'узких мест'
-    '''
-    def breakSplit(self, key, src, threshold):
+    # threshold - пороговое значение в долях
+    def breakSplit(self, key, src, threshold=0):
         storage = cvCreateMemStorage(0)
-        tmp = cvCloneImage(src)
-        res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
-        mat = cvGetMat(res)
+        res = cvCloneImage(src)
+        mat = cvGetMat(src)
 
-        divs = []
-
-        prev = 0
+        # алгоритм, не поддающийся документированию и сопровождению
+        # тем не менее
+        leps = []   # переходы
+        prev = 0    # предполагаем, что слева пустое пространство (ничего страшного, если это не так)
+        # для каждого столбца считаем количество белых пикселей
         for y in xrange(mat.cols):
-            s = 0
+            qty = 0.0
             for x in xrange(mat.rows):
-                s += 1 if mat[x][y] > 0 else 0
+                qty += 1 if mat[x][y] > 0 else 0
 
-            curr = 1 if s > treshold else 0
+            # если процент белых пикселей в столбце превышает пороговое значение, считаем что там символ
+            curr = 1 if qty / mat.rows > threshold else 0
+            # фиксируем переходы
             if prev != curr:
-                divs.append(y)
+                leps.append(y)
             prev = curr
 
-        if len(divs) % 2 != 0:
-            divs.append(mat.cols - 1)
+        # корректный последний переход
+        if len(leps) % 2 != 0:
+            leps.append(mat.cols - 1)
 
-        bounds = []
-        for i in xrange(0, len(divs), 2):
-            bounds.append((divs[i], divs[i + 1]))
+        boundPairs = [] # границы
+        for i in xrange(0, len(leps), 2):
+            boundPairs.append((leps[i], leps[i + 1]))
 
-        # Покажем рамки
-        white = (255, 255, 255)
-        for bound in bounds:
-            p1 = (bound[0], 0)
-            p2 = (bound[1], mat.rows - 1)   
-            cvRectangle(tmp, p1, p2, white)
+        # отображение рамок 
+        for bounds in boundPairs:
+            p1 = (bounds[0], 0)
+            p2 = (bounds[1], mat.rows - 1)   
+            cvRectangle(res, p1, p2, gray)
+            self.transforms[key] = res
 
-        cvNamedWindow( 'test', 1 )
-        cvShowImage( 'test', tmp)
-        i = 0
-        
-        for bound in bounds:
-            sub = cvGetSubRect(res, (bound[0], 0, bound[1] - bound[0], mat.rows))
-            tmp = cvCreateImage(cvGetSize(sub), IPL_DEPTH_8U, 1)
-            #cvCopy(sub, tmp)
-            nb, contours = cvFindContours(sub, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE)
-            cvDrawContours(tmp, contours, white, white, 1)
-            cvNamedWindow( 'test%s' % i, 1 )
-            cvShowImage( 'test%s' % i, tmp)
-            i+= 1
+        # разбиение на символы
+        for bounds in boundPairs:
+            rect = (bounds[0], 0, bounds[1] - bounds[0], mat.rows)
+            roi = cvGetSubRect(src, rect)
+            tmp1 = cvCreateImage(cvGetSize(roi), IPL_DEPTH_8U, 1)
+            tmp2 = cvCreateImage(cvGetSize(roi), IPL_DEPTH_8U, 1)
+            cvCopy(roi, tmp1)
+            cvCopy(roi, tmp2)
+            num, contours = cvFindContours(tmp1, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, (0, 0))
 
-    '''
+            # выбираем самый крупный контур
+            saveArea = 0
+            for contour in contours.hrange():
+                currArea = cvContourArea(contour)
+                if currArea > saveArea:
+                    saveArea = currArea
+                    saveCont = contour
+
+            # и вычленяем его
+            rect = cvBoundingRect(saveCont)
+            roi = cvGetSubRect(tmp2, rect)
+            smb = cvCreateImage(cvGetSize(roi), IPL_DEPTH_8U, 1)
+            cvCopy(roi, smb)
+            self.symbols.append(Transformer(Ipl2QIm(smb)))
+
+
+    # отображение всех пеобразований
     def show(self):
         self.view = QWidget()
         mainLayout = QVBoxLayout()
@@ -194,10 +216,10 @@ class Transformer(QObject):
             transrormLayout.addWidget(header)
             transrormLayout.addWidget(image)
 
-        for piece in self.pieces:
+        for symbol in self.symbols:
             transformsLayout = QHBoxLayout()
             mainLayout.addLayout(transformsLayout)
-            for key, value in piece.transforms.iteritems():
+            for key, value in symbol.transforms.iteritems():
                 transrormLayout = QVBoxLayout()
                 transformsLayout.addLayout(transrormLayout)
                 header = QLabel(key)
@@ -221,5 +243,6 @@ if __name__ == '__main__':
     t.morphology('morphology', t['binarize'], 1, 1, kernel)
     white = (255, 255, 255)
     gray = (137, 137, 137)
+    t.breakSplit('breaksplit', t['morphology'])
     t.show()
     exit(app.exec_())
