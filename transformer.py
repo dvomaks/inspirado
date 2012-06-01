@@ -1,4 +1,5 @@
-#Embedded file name: /home/polzuka/inspirado/transformer.py
+# -*- coding: utf-8 -*-
+
 from sys import exit
 from collections import OrderedDict
 from cStringIO import StringIO
@@ -109,9 +110,11 @@ class Transformer(QObject):
         storage = cvCreateMemStorage(0)
         tmp = cvCloneImage(src)
         res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
-        nb_contours, contours = cvFindContours(tmp, storage, sizeof_CvContour, mode, method, (0, 0))
+
+        num, contours = cvFindContours(tmp, storage, sizeof_CvContour, mode, method, (0, 0))
         cvDrawContours(res, contours, externalColor, internalColor, 1)
         self.transforms[key] = res
+
         for contour in contours.hrange():
             rect = cvBoundingRect(contour)
             pt1 = (rect.x, rect.y)
@@ -127,9 +130,55 @@ class Transformer(QObject):
             self.info.append((cnt, rect.angle, rect.center, contour))
 
     # разбиение на символы на основе 'узких мест'
+    '''
     def breakSplit(self, key, src, threshold):
-        pass
+        storage = cvCreateMemStorage(0)
+        tmp = cvCloneImage(src)
+        res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
+        mat = cvGetMat(res)
 
+        divs = []
+
+        prev = 0
+        for y in xrange(mat.cols):
+            s = 0
+            for x in xrange(mat.rows):
+                s += 1 if mat[x][y] > 0 else 0
+
+            curr = 1 if s > treshold else 0
+            if prev != curr:
+                divs.append(y)
+            prev = curr
+
+        if len(divs) % 2 != 0:
+            divs.append(mat.cols - 1)
+
+        bounds = []
+        for i in xrange(0, len(divs), 2):
+            bounds.append((divs[i], divs[i + 1]))
+
+        # Покажем рамки
+        white = (255, 255, 255)
+        for bound in bounds:
+            p1 = (bound[0], 0)
+            p2 = (bound[1], mat.rows - 1)   
+            cvRectangle(tmp, p1, p2, white)
+
+        cvNamedWindow( 'test', 1 )
+        cvShowImage( 'test', tmp)
+        i = 0
+        
+        for bound in bounds:
+            sub = cvGetSubRect(res, (bound[0], 0, bound[1] - bound[0], mat.rows))
+            tmp = cvCreateImage(cvGetSize(sub), IPL_DEPTH_8U, 1)
+            #cvCopy(sub, tmp)
+            nb, contours = cvFindContours(sub, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE)
+            cvDrawContours(tmp, contours, white, white, 1)
+            cvNamedWindow( 'test%s' % i, 1 )
+            cvShowImage( 'test%s' % i, tmp)
+            i+= 1
+
+    '''
     def show(self):
         self.view = QWidget()
         mainLayout = QVBoxLayout()

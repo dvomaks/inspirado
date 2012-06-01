@@ -1,4 +1,5 @@
-from PyQt4.QtCore import QUrl, QFile, QFileInfo, QIODevice, QEventLoop
+# -*- coding: utf-8 -*-
+
 from PyQt4.QtGui import QApplication, QImage
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkDiskCache
