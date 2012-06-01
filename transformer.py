@@ -211,7 +211,7 @@ class Transformer(QObject):
 
 if __name__ == '__main__':
     app = QApplication([])
-    qimg = QImage('captcha.jpg')
+    qimg = QImage('captcha/captcha.jpg')
     t = Transformer(qimg)
     t.resize('resize', t['ORIG'], 4, 4)
     t.grayscale('grayscale', t['resize'], 2)
