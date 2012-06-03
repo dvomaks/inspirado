@@ -239,11 +239,11 @@ if __name__ == '__main__':
     t.resize('resize', t['ORIG'], 4, 4)
     t.grayscale('grayscale', t['resize'], 2)
     t.binarize('binarize', t['grayscale'], 200, CV_THRESH_BINARY)
+
     radius = 3
     kernel = cvCreateStructuringElementEx(radius * 2 + 1, radius * 2 + 1, radius, radius, CV_SHAPE_ELLIPSE)
+    
     t.morphology('morphology', t['binarize'], 1, 1, kernel)
-    white = (255, 255, 255)
-    gray = (137, 137, 137)
     t.breakSplit('breaksplit', t['morphology'])
     t.show()
     exit(app.exec_())
