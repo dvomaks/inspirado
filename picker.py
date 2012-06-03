@@ -13,7 +13,7 @@ class Picker(QApplication):
 		self.args = getData(argv)
 
 	def pickup(self):
-		
+		print self.args
 
 
 if __name__ == '__main__':
