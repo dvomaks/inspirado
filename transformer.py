@@ -95,7 +95,8 @@ class Transformer(QObject):
         self.transforms[key] = res
 
     # морфологические преобразования
-    # method - тип преобразования: 0-erode, 1-dilate, 2-....
+    # method - тип преобразования: 
+    # 0-erode, 1-dilate, 2-CV_MOP_OPEN, 3-CV_MOP_CLOSE, 4-CV_MOP_GRADIENT, 5-CV_MOP_TOPHAT, 6-CV_MOP_BLACKHAT
     def morphology(self, key, src, method, iterations=1, kernel=None):
         tmp = cvCreateImage(cvGetSize(src), src.depth, src.nChannels)
         if not kernel:
