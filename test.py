@@ -42,15 +42,16 @@ cvNamedWindow( 'test', 1 )
 cvShowImage( 'test', tmp)
 i = 0
 storage = cvCreateMemStorage(0)
-for bound in bounds:
+for bound in bounds[1:]:
 	sub = cvGetSubRect(res, (bound[0], 0, bound[1] - bound[0], mat.rows))
 	tmp = cvCreateImage(cvGetSize(sub), IPL_DEPTH_8U, 1)
-	#cvCopy(sub, tmp)
-	nb, contours = cvFindContours(sub, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE)
-	cvDrawContours(tmp, contours, white, white, 1)
-	cvNamedWindow( 'test%s' % i, 1 )
+	tmp1 = cvCreateImage(cvGetSize(sub), IPL_DEPTH_8U, 1)
+	cvCopy(sub, tmp)
+	nb, contours = cvFindContours(tmp, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE)
+	cvDrawContours(tmp1, contours, white, white, 1)
+	cvNamedWindow( 'test%s' % i, 1)
 	cvShowImage( 'test%s' % i, tmp)
-	i+= 1
+	i += 1
 
 	cvWaitKey(0)
 
