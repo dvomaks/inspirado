@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from PyQt4.QtCore import QEventLoop
+from PyQt4.QtCore import QEventLoop, QFileInfo, QFile, QFileInfo, QUrl, QIODevice
 from PyQt4.QtGui import QApplication, QImage
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkDiskCache
@@ -58,7 +58,7 @@ class Browser(QWebPage):
     def get(self, url, headers = None, pull = None):
         log.info('get(): url %s' % colorize(url))
         self.js('window.location = "%s"' % url)     # идем на url
-        self.loop.exec_()                           # ждем пока досасется страница
+        self.loop.exec_()                           # ждем пока дососется страница
         self.jquerify()                             # подгружаем jQuery
 
     # Сохранение высосанных данных (например картинок)

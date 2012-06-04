@@ -15,7 +15,7 @@ class Picker(QApplication):
 		QApplication.__init__(self, [])
 		self.args = getData(argv)
 		self.browser = Browser()
-		self.transformer = []
+		self.transformer = Transformer()
 		self.analyzer = []
 		QTimer.singleShot(0, self.pickup)
 
@@ -26,7 +26,8 @@ class Picker(QApplication):
 		exec s
 		implement(self.browser, self.transformer, self.analyzer, log, self.args)
 		log.debug(colorize('pickup finished', GREEN))
-		self.quit()
+		if not self.browser.shown:
+			self.quit()
 
 
 if __name__ == '__main__':

@@ -55,11 +55,15 @@ gray = (100, 100, 100)
 # хитрый класс
 class Transformer(QObject):
 
-    def __init__(self, orig):
+    def __init__(self):
         QObject.__init__(self)
-        self.transforms = OrderedDict({'ORIG': QIm2Ipl(orig)})
+        self.transforms = OrderedDict()
         self.symbols = []
         self.info = []
+
+    def load(self, key, orig):
+        self.transforms[key] = QIm2Ipl(orig)
+
 
     # переопределение []
     def __getitem__(self, key):
@@ -69,7 +73,7 @@ class Transformer(QObject):
         self.transforms[key] = value
 
     # подгрузка изображения из path
-    def load(self, key, path):
+    def open(self, key, path):
         self.transforms[key] = cvLoadImage(path)
 
     # копирование изображения
