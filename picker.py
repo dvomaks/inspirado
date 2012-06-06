@@ -14,7 +14,7 @@ class Picker(QApplication):
 	def __init__(self, argv):
 		QApplication.__init__(self, [])
 		self.args = getData(argv)
-		self.browser = Browser()
+		self.browser = Browser(debug=True)
 		self.transformer = Transformer()
 		self.analyzer = []
 		QTimer.singleShot(0, self.pickup)

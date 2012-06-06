@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 def implement(browser, transformer, analyzer, log, data):
-    #browser.show()
+    browser.show()
     browser.get('http://wmstream.ru/') 
     captcha = browser.js('$("#wmbonus_form_captcha img")[0].src')
     #code = analyzer(tarnsformer(captcha))

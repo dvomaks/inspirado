@@ -3,7 +3,7 @@
 from PyQt4.QtCore import QEventLoop, QFileInfo, QFile, QFileInfo, QUrl, QIODevice
 from PyQt4.QtGui import QApplication, QImage
 from PyQt4.QtWebKit import QWebPage, QWebView
-from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkDiskCache
+from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkDiskCache, QNetworkRequest
 from settings import JQUERY_PATH, CACHE_PATH, SAVE_PATH
 from base import getLog, colorize, RED, GREEN
 
@@ -19,15 +19,35 @@ class Cache(QNetworkDiskCache):
         return QNetworkDiskCache.prepare(self, metaData)
 
 
+# Менеджер с отладкой
+class Manager(QNetworkAccessManager):
+
+    def __init__(self, parent=None, debug=False):
+        QNetworkAccessManager.__init__(self, parent)
+        self.debug = debug
+
+    def createRequest(self, op, request, device=None):
+        request.setRawHeader('User-Agent', 'bebe')
+        if self.debug:
+            for header in request.rawHeaderList():
+                print '%s: %s' %(header, request.rawHeader(header))
+
+            print type(request.originatingObject())
+            print
+        
+        return QNetworkAccessManager.createRequest(self, op, request, device)
+
+
 # Собственно, браузер
 # Умеет ходить на указанные url'ы и выполнять там разные js-скрипты
 # Использует пофиксенные кеш и менеджер
 class Browser(QWebPage):
 
-    def __init__(self, debug = False):
+    def __init__(self, debug=False):
         QWebPage.__init__(self)
         self.cache = Cache()
-        self.manager = QNetworkAccessManager()
+        self.manager = Manager(debug=debug)
+        #self.manager = QNetworkAccessManager()
         self.loop = QEventLoop()
         self.shown = False
         self.cache.setCacheDirectory(CACHE_PATH)

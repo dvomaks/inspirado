@@ -14,12 +14,12 @@ from PIL import Image
 
 # преобразование изображений разных форматов друг в друга
 def QIm2PIL(qimg):
-    buffer = QBuffer()
-    buffer.open(QIODevice.WriteOnly)
-    qimg.save(buffer, 'BMP')
+    buff = QBuffer()
+    buff.open(QIODevice.WriteOnly)
+    qimg.save(buff, 'BMP')
     fp = StringIO()
-    fp.write(buffer.data())
-    buffer.close()
+    fp.write(buff.data())
+    buff.close()
     fp.seek(0)
     return Image.open(fp)
 
@@ -53,17 +53,17 @@ gray = (100, 100, 100)
 
 
 # хитрый класс
-class Transformer(QObject):
+class Transformer():
 
     def __init__(self):
         QObject.__init__(self)
+
+        # в transforms хранятся преобразования исходного изображения
         self.transforms = OrderedDict()
+
+        # 
         self.symbols = []
         self.info = []
-
-    def load(self, key, orig):
-        self.transforms[key] = QIm2Ipl(orig)
-
 
     # переопределение []
     def __getitem__(self, key):
@@ -71,6 +71,10 @@ class Transformer(QObject):
 
     def __setitem__(self, key, value):
         self.transforms[key] = value
+
+    # подгрузка изображения QImage
+    def load(self, key, src):
+        self.transforms[key] = QIm2Ipl(src)
 
     # подгрузка изображения из path
     def open(self, key, path):
@@ -151,6 +155,7 @@ class Transformer(QObject):
         # тем не менее
         leps = []   # переходы
         prev = 0    # предполагаем, что слева пустое пространство (ничего страшного, если это не так)
+        
         # для каждого столбца считаем количество белых пикселей
         for y in xrange(mat.cols):
             qty = 0.0
