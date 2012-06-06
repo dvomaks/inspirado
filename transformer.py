@@ -52,15 +52,18 @@ white = (255, 255, 255)
 gray = (100, 100, 100)
 
 
-# хитрый класс
+# класс - хранилище преобразований изображения
+# все изображения хранятся как IplImage
 class Transformer():
 
-    def __init__(self):
-        QObject.__init__(self)
+    def __init__(self, key=None, src=None):
 
         # в transforms хранятся преобразования исходного изображения
         self.transforms = OrderedDict()
 
+        # если изображение передается при создании объекта
+        if key and src:
+            self.load(key, src)
         # 
         self.symbols = []
         self.info = []
@@ -71,6 +74,10 @@ class Transformer():
 
     def __setitem__(self, key, value):
         self.transforms[key] = value
+
+    # последнее преобразование
+    def last(self):
+        return self.transforms.values()[-1]
 
     # подгрузка изображения QImage
     def load(self, key, src):
@@ -97,8 +104,14 @@ class Transformer():
         self.transforms[key] = res
 
     # масштабирование
-    def resize(self, key, src, scaleX, scaleY, method=1):
+    def resizeby(self, key, src, scaleX, scaleY, method=1):
         res = cvCreateImage((src.width * scaleX, src.height * scaleY), src.depth, src.nChannels)
+        cvResize(src, res, method)
+        self.transforms[key] = res
+
+    # масштабирование
+    def resizeto(self, key, src, resultX, resultY, method=1):
+        res = cvCreateImage((resultX, resultY), src.depth, src.nChannels)
         cvResize(src, res, method)
         self.transforms[key] = res
 
@@ -155,7 +168,7 @@ class Transformer():
         # тем не менее
         leps = []   # переходы
         prev = 0    # предполагаем, что слева пустое пространство (ничего страшного, если это не так)
-        
+
         # для каждого столбца считаем количество белых пикселей
         for y in xrange(mat.cols):
             qty = 0.0
@@ -207,7 +220,17 @@ class Transformer():
             roi = cvGetSubRect(tmp2, rect)
             smb = cvCreateImage(cvGetSize(roi), IPL_DEPTH_8U, 1)
             cvCopy(roi, smb)
-            self.symbols.append(Transformer(Ipl2QIm(smb)))
+            self.symbols.append(Transformer('beaksplit', Ipl2QIm(smb)))
+
+    # групповая функция
+    # установка стандартных размеров для символов
+    def normolize(self, normX, normY):
+        for smb in self.symbols:
+            img = smb.last()
+            size = cvGetSize(img)
+            imgX = size.width
+            imgY = size.height
+            smb.resizeto('normolize', img, normX, normY)
 
 
     # отображение всех пеобразований
@@ -244,8 +267,8 @@ class Transformer():
 if __name__ == '__main__':
     app = QApplication([])
     qimg = QImage('captcha/captcha.jpg')
-    t = Transformer(qimg)
-    t.resize('resize', t['ORIG'], 4, 4)
+    t = Transformer('orig', qimg)
+    t.resizeby('resize', t['orig'], 4, 4)
     t.grayscale('grayscale', t['resize'], 2)
     t.binarize('binarize', t['grayscale'], 200, CV_THRESH_BINARY)
 
@@ -254,5 +277,6 @@ if __name__ == '__main__':
     
     t.morphology('morphology', t['binarize'], 1, 1, kernel)
     t.breakSplit('breaksplit', t['morphology'])
+    t.normolize(70, 100)
     t.show()
     exit(app.exec_())
