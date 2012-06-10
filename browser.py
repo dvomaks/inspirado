@@ -43,8 +43,11 @@ class Manager(QNetworkAccessManager):
 # Использует пофиксенные кеш и менеджер
 class Browser(QWebPage):
 
-    def __init__(self, debug=False):
+    def __init__(self, autojquerify=True, debug=False):
         QWebPage.__init__(self)
+        self.debug = debug
+        self.autojquerify = autojquerify
+
         self.cache = Cache()
         self.manager = Manager(debug=debug)
         #self.manager = QNetworkAccessManager()
@@ -79,7 +82,9 @@ class Browser(QWebPage):
         log.info('get(): url %s' % colorize(url))
         self.js('window.location = "%s"' % url)     # идем на url
         self.loop.exec_()                           # ждем пока дососется страница
-        self.jquerify()                             # подгружаем jQuery
+
+        if self.autojquerify:                       # если 
+            self.jquerify()                         # подгружаем jQuery
 
     # Сохранение высосанных данных (например картинок)
     # Данные берутся из кеша (для этого его и поправили) по url'у

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from os import chdir, getcwd
 from sys import exit
 from collections import OrderedDict
 from cStringIO import StringIO
@@ -83,6 +84,9 @@ class Transformer():
     def load(self, key, src):
         self.transforms[key] = QIm2Ipl(src)
 
+    def save(self, src, name):
+        cvSaveImage(name, src);
+
     # подгрузка изображения из path
     def open(self, key, path):
         self.transforms[key] = cvLoadImage(path)
@@ -162,7 +166,6 @@ class Transformer():
     def breakSplit(self, key, src, threshold=0):
         storage = cvCreateMemStorage(0)
         res = cvCloneImage(src)
-        mat = cvGetMat(src)
 
         # алгоритм, не поддающийся документированию и сопровождению
         # тем не менее
@@ -170,13 +173,13 @@ class Transformer():
         prev = 0    # предполагаем, что слева пустое пространство (ничего страшного, если это не так)
 
         # для каждого столбца считаем количество белых пикселей
-        for y in xrange(mat.cols):
+        for y in xrange(src.cols):
             qty = 0.0
-            for x in xrange(mat.rows):
-                qty += 1 if mat[x][y] > 0 else 0
+            for x in xrange(src.rows):
+                qty += 1 if src[x][y] > 0 else 0
 
             # если процент белых пикселей в столбце превышает пороговое значение, считаем что там символ
-            curr = 1 if qty / mat.rows > threshold else 0
+            curr = 1 if qty / src.rows > threshold else 0
             # фиксируем переходы
             if prev != curr:
                 leps.append(y)
@@ -184,7 +187,7 @@ class Transformer():
 
         # корректный последний переход
         if len(leps) % 2 != 0:
-            leps.append(mat.cols - 1)
+            leps.append(src.cols - 1)
 
         boundPairs = [] # границы
         for i in xrange(0, len(leps), 2):
@@ -193,13 +196,13 @@ class Transformer():
         # отображение рамок 
         for bounds in boundPairs:
             p1 = (bounds[0], 0)
-            p2 = (bounds[1], mat.rows - 1)   
+            p2 = (bounds[1], src.rows - 1)   
             cvRectangle(res, p1, p2, gray)
             self.transforms[key] = res
 
         # разбиение на символы
         for bounds in boundPairs:
-            rect = (bounds[0], 0, bounds[1] - bounds[0], mat.rows)
+            rect = (bounds[0], 0, bounds[1] - bounds[0], src.rows)
             roi = cvGetSubRect(src, rect)
             tmp1 = cvCreateImage(cvGetSize(roi), IPL_DEPTH_8U, 1)
             tmp2 = cvCreateImage(cvGetSize(roi), IPL_DEPTH_8U, 1)
@@ -220,17 +223,33 @@ class Transformer():
             roi = cvGetSubRect(tmp2, rect)
             smb = cvCreateImage(cvGetSize(roi), IPL_DEPTH_8U, 1)
             cvCopy(roi, smb)
-            self.symbols.append(Transformer('beaksplit', Ipl2QIm(smb)))
+            self.symbols.append(Transformer(key, Ipl2QIm(smb)))
 
     # групповая функция
     # установка стандартных размеров для символов
-    def normolize(self, normX, normY):
+    def normolize(self, dstkey, srckey, normX, normY):
         for smb in self.symbols:
-            img = smb.last()
+            img = smb.transforms[srckey]
             size = cvGetSize(img)
             imgX = size.width
             imgY = size.height
-            smb.resizeto('normolize', img, normX, normY)
+            smb.resizeto(dstkey, img, normX, normY)
+
+    # групповая функция
+    # сохранение символов
+    def saveSymbols(self, srckey, smbdir, prefix):
+        savedir = getcwd()
+        chdir(smbdir)
+
+        i = 0
+        for smb in self.symbols:
+            img = smb.transforms[srckey]
+            self.save(img, '%d%s.png' % (i, prefix))
+            i += 1
+
+        chdir(savedir)
+
+
 
 
     # отображение всех пеобразований
@@ -277,6 +296,7 @@ if __name__ == '__main__':
     
     t.morphology('morphology', t['binarize'], 1, 1, kernel)
     t.breakSplit('breaksplit', t['morphology'])
-    t.normolize(70, 100)
+    t.normolize('origsplit', 'breaksplit', 30, 45)
+    t.saveSymbols('origsplit', '/home/polzuka/inspirado/symbols', 'a')
     t.show()
     exit(app.exec_())
