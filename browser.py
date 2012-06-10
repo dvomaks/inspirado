@@ -26,6 +26,7 @@ class Manager(QNetworkAccessManager):
         QNetworkAccessManager.__init__(self, parent)
         self.debug = debug
 
+    '''
     def createRequest(self, op, request, device=None):
         request.setRawHeader('User-Agent', 'bebe')
         if self.debug:
@@ -36,6 +37,7 @@ class Manager(QNetworkAccessManager):
             print
         
         return QNetworkAccessManager.createRequest(self, op, request, device)
+    '''
 
 
 # Собственно, браузер
@@ -50,7 +52,6 @@ class Browser(QWebPage):
 
         self.cache = Cache()
         self.manager = Manager(debug=debug)
-        #self.manager = QNetworkAccessManager()
         self.loop = QEventLoop()
         self.shown = False
         self.cache.setCacheDirectory(CACHE_PATH)
@@ -87,16 +88,15 @@ class Browser(QWebPage):
             self.jquerify()                         # подгружаем jQuery
 
     # Сохранение высосанных данных (например картинок)
-    # Данные берутся из кеша (для этого его и поправили) по url'у
-    def save(self, url):
-        name = SAVE_PATH + '/' + QFileInfo(QUrl(url).path()).fileName()
-        log.info('save(): path %s' % colorize(name))
-        file = QFile(name)
+    # Данные берутся из кеша по url'у  и сохраняются в path
+    def save(self, url, path):
+        log.info('save(): %s to %s ' % (colorize(url), colorize(path)))
+        file = QFile(path)
         cached = self.cache.data(QUrl(url)).readAll()
         if file.open(QIODevice.WriteOnly):
             file.write(cached)
         file.close()
-        return name
+        return path
 
     # Получение картинки, сохраненной в кеше
     def image(self, url):

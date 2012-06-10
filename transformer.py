@@ -12,6 +12,12 @@ from opencv.highgui import *
 from opencv import adaptors
 from opencv.adaptors import PIL2Ipl
 from PIL import Image
+from base import getLog, colorize, RED, GREEN, YELLOW
+
+log = getLog('transformer')
+
+class TransformError(Exception):
+    pass
 
 # преобразование изображений разных форматов друг в друга
 def QIm2PIL(qimg):
@@ -83,38 +89,46 @@ class Transformer():
     # подгрузка изображения QImage
     def load(self, key, src):
         self.transforms[key] = QIm2Ipl(src)
+        log.debug('load(): %s' % colorize(key, YELLOW))
 
-    def save(self, src, name):
-        cvSaveImage(name, src);
+    def save(self, src, path):
+        log.debug('save(): %s' % colorize(path, YELLOW))
+        cvSaveImage(path, src);
 
     # подгрузка изображения из path
     def open(self, key, path):
+        log.debug('open(): %s from %s' % (colorize(key, YELLOW), colorize(path, YELLOW)))
         self.transforms[key] = cvLoadImage(path)
 
     # копирование изображения
     def clone(self, key, src):
+        log.debug('clone(): %s' % colorize(key, YELLOW))
         self.transforms[key] = cvCloneImage(src)
 
     # преобразование в оттенки серого
     def grayscale(self, key, src, flags=0):
+        log.debug('garyscale(): %s' % colorize(key, YELLOW))
         res = cvCreateImage(cvGetSize(src), src.depth, 1)
         cvConvertImage(src, res, flags)
         self.transforms[key] = res
 
     # бинаризация по указанному порогу
     def binarize(self, key, src, threshold, method):
+        log.debug('binarize(): %s' % colorize(key, YELLOW))
         res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
         cvThreshold(src, res, threshold, 255, method)
         self.transforms[key] = res
 
     # масштабирование
     def resizeby(self, key, src, scaleX, scaleY, method=1):
+        log.debug('resizeby(): %s' % colorize(key, YELLOW))
         res = cvCreateImage((src.width * scaleX, src.height * scaleY), src.depth, src.nChannels)
         cvResize(src, res, method)
         self.transforms[key] = res
 
     # масштабирование
     def resizeto(self, key, src, resultX, resultY, method=1):
+        log.debug('resizeto(): %s' % colorize(key, YELLOW))
         res = cvCreateImage((resultX, resultY), src.depth, src.nChannels)
         cvResize(src, res, method)
         self.transforms[key] = res
@@ -123,6 +137,7 @@ class Transformer():
     # method - тип преобразования: 
     # 0-erode, 1-dilate, 2-CV_MOP_OPEN, 3-CV_MOP_CLOSE, 4-CV_MOP_GRADIENT, 5-CV_MOP_TOPHAT, 6-CV_MOP_BLACKHAT
     def morphology(self, key, src, method, iterations=1, kernel=None):
+        log.debug('morphology(): %s' % colorize(key, YELLOW))
         tmp = cvCreateImage(cvGetSize(src), src.depth, src.nChannels)
         if not kernel:
             kernel = cvCreateStructuringElementEx(3, 3, 1, 1, CV_SHAPE_ELLIPSE)
@@ -164,6 +179,7 @@ class Transformer():
     # разбиение на символы на основе 'узких мест'
     # threshold - пороговое значение в долях
     def breakSplit(self, key, src, threshold=0):
+        log.debug('breakSplit(): %s' % colorize(key, YELLOW))
         storage = cvCreateMemStorage(0)
         res = cvCloneImage(src)
 
@@ -180,6 +196,7 @@ class Transformer():
 
             # если процент белых пикселей в столбце превышает пороговое значение, считаем что там символ
             curr = 1 if qty / src.rows > threshold else 0
+
             # фиксируем переходы
             if prev != curr:
                 leps.append(y)
@@ -210,6 +227,9 @@ class Transformer():
             cvCopy(roi, tmp2)
             num, contours = cvFindContours(tmp1, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, (0, 0))
 
+            if num == 0:
+                raise TransformError
+
             # выбираем самый крупный контур
             saveArea = 0
             for contour in contours.hrange():
@@ -228,6 +248,7 @@ class Transformer():
     # групповая функция
     # установка стандартных размеров для символов
     def normolize(self, dstkey, srckey, normX, normY):
+        log.debug('normolize(): %s' % colorize(srckey, YELLOW))
         for smb in self.symbols:
             img = smb.transforms[srckey]
             size = cvGetSize(img)
@@ -237,14 +258,15 @@ class Transformer():
 
     # групповая функция
     # сохранение символов
-    def saveSymbols(self, srckey, smbdir, prefix):
+    def saveSymbols(self, srckey, smbdir, ser):
+        log.debug('saveSymbols(): %s' % colorize(srckey, YELLOW))
         savedir = getcwd()
         chdir(smbdir)
 
         i = 0
         for smb in self.symbols:
             img = smb.transforms[srckey]
-            self.save(img, '%d%s.png' % (i, prefix))
+            self.save(img, '%d_%s.png' % (i, ser))
             i += 1
 
         chdir(savedir)
@@ -285,7 +307,7 @@ class Transformer():
 
 if __name__ == '__main__':
     app = QApplication([])
-    qimg = QImage('captcha/captcha.jpg')
+    qimg = QImage('captcha/picture01')
     t = Transformer('orig', qimg)
     t.resizeby('resize', t['orig'], 4, 4)
     t.grayscale('grayscale', t['resize'], 2)
@@ -295,8 +317,8 @@ if __name__ == '__main__':
     kernel = cvCreateStructuringElementEx(radius * 2 + 1, radius * 2 + 1, radius, radius, CV_SHAPE_ELLIPSE)
     
     t.morphology('morphology', t['binarize'], 1, 1, kernel)
-    t.breakSplit('breaksplit', t['morphology'])
-    t.normolize('origsplit', 'breaksplit', 30, 45)
-    t.saveSymbols('origsplit', '/home/polzuka/inspirado/symbols', 'a')
+    t.breakSplit('breaksplit', t['morphology'], 0.2)
+    t.normolize('origsplit', 'breaksplit', 20, 30)
+    t.saveSymbols('origsplit', '/home/polzuka/inspirado/symbols', 1)
     t.show()
     exit(app.exec_())

@@ -17,7 +17,8 @@ class Picker(QApplication):
 		self.browser = Browser(debug=True)
 		self.transformer = Transformer()
 		self.analyzer = []
-		QTimer.singleShot(0, self.pickup)
+		#QTimer.singleShot(0, self.pickup)
+		QTimer.singleShot(0, self.prepare)
 
 	def pickup(self):
 		log.debug(colorize('pickup started', GREEN))
@@ -26,6 +27,16 @@ class Picker(QApplication):
 		exec s
 		implement(self.browser, self.transformer, self.analyzer, log, self.args)
 		log.debug(colorize('pickup finished', GREEN))
+		if not self.browser.shown:
+			self.quit()
+
+	def prepare(self):
+		log.debug(colorize('prepare started', GREEN))
+		s = 'from %s import preparing' % self.args['implem']
+		log.debug(colorize(s, GREEN))
+		exec s
+		preparing(self.browser, self.transformer, self.analyzer, log, self.args)
+		log.debug(colorize('prepare finished', GREEN))
 		if not self.browser.shown:
 			self.quit()
 
