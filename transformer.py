@@ -87,7 +87,7 @@ class Transformer(QObject):
     def last(self):
         return self.transforms.values()[-1]
 
-    # применительно тольк к символам
+    # применительно только к символам
     def slice(self, srckey):
         res = []
         for smb in self.symbols:
@@ -161,6 +161,7 @@ class Transformer(QObject):
             self.transforms[key] = res
 
     # разделение на символы на основе контурного анализа
+    # threshold - 
     def contourSplit(self, key, src, threshold=0):
         storage = cvCreateMemStorage(0)
         # cvFindContours портит изображение, на котором ищет контуры, поэтому создадим копию
@@ -210,11 +211,11 @@ class Transformer(QObject):
             messcontours[rect.x] = cnt
 
         # площадь исходного изображения
-        srcarea = src.width * src.height
+        srcarea = src.width * src.height * 1.
 
         for k in sorted(messcontours.iterkeys()):
-            # если площадь контура меньше половины средней площади не будем сохранять ее
-            if areas[k] > srcarea * threshold:
+            # считаем контур символом если площадь обрамляющего прямоугольника имеет приличный размер
+            if areas[k] / srcarea > threshold:
                 self.symbols.append(Transformer(key, Ipl2QIm(messcontours[k])))
 
 
