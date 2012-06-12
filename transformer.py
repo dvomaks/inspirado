@@ -161,7 +161,7 @@ class Transformer(QObject):
             self.transforms[key] = res
 
     # разделение на символы на основе контурного анализа
-    # threshold - 
+    # threshold - пороговое значение отношения площади обрамляющей рамки символа к исходному изображению
     def contourSplit(self, key, src, threshold=0):
         storage = cvCreateMemStorage(0)
         # cvFindContours портит изображение, на котором ищет контуры, поэтому создадим копию
@@ -214,7 +214,7 @@ class Transformer(QObject):
         srcarea = src.width * src.height * 1.
 
         for k in sorted(messcontours.iterkeys()):
-            # считаем контур символом если площадь обрамляющего прямоугольника имеет приличный размер
+            # считаем контур символом, если площадь обрамляющего прямоугольника имеет достаточный размер
             if areas[k] / srcarea > threshold:
                 self.symbols.append(Transformer(key, Ipl2QIm(messcontours[k])))
 
