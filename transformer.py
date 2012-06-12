@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-
-from os import chdir, getcwd
+import os
 from sys import exit
 from collections import OrderedDict
 from cStringIO import StringIO
@@ -12,9 +11,9 @@ from opencv.highgui import *
 from opencv import adaptors
 from opencv.adaptors import PIL2Ipl
 from PIL import Image
-from base import getLog, colorize, RED, GREEN, YELLOW
+from base import getlog, colorize, RED, GREEN, YELLOW
 
-log = getLog('transformer')
+log = getlog('transformer')
 
 class TransformError(Exception):
     pass
@@ -55,15 +54,17 @@ def Ipl2QIm(iplimg):
 
 
 # и несколько полезных констант
+black = (0, 0, 0)
 white = (255, 255, 255)
 gray = (100, 100, 100)
 
 
 # класс - хранилище преобразований изображения
 # все изображения хранятся как IplImage
-class Transformer():
+class Transformer(QObject):
 
     def __init__(self, key=None, src=None):
+        QObject.__init__(self)
 
         # в transforms хранятся преобразования исходного изображения
         self.transforms = OrderedDict()
@@ -85,6 +86,13 @@ class Transformer():
     # последнее преобразование
     def last(self):
         return self.transforms.values()[-1]
+
+    # применительно тольк к символам
+    def slice(self, srckey):
+        res = []
+        for smb in self.symbols:
+            res.append(smb[srckey])
+        return res
 
     # подгрузка изображения QImage
     def load(self, key, src):
@@ -153,27 +161,67 @@ class Transformer():
             self.transforms[key] = res
 
     # разделение на символы на основе контурного анализа
-    def contourSplit(self, key, src):
+    def contourSplit(self, key, src, threshold=0):
         storage = cvCreateMemStorage(0)
+        # cvFindContours портит изображение, на котором ищет контуры, поэтому создадим копию
         tmp = cvCloneImage(src)
+        # на res нарисуем найденные контуры и прямоугольники, их ограничивающие
         res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
-
-        num, contours = cvFindContours(tmp, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, (0, 0))
-        cvDrawContours(res, contours, gray, gray, 1)
         self.transforms[key] = res
 
+        # ищем контуры
+        num, contours = cvFindContours(tmp, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, (0, 0))
+
+        # контуры в contours хранятся в беспорядке
+        # нам нужно, что бы они шли по порядку слева направо
+        messcontours = dict()
+        areas = dict()
         for contour in contours.hrange():
+            # прямоугольник, ограничивающий контур
             rect = cvBoundingRect(contour)
             pt1 = (rect.x, rect.y)
             pt2 = (rect.x + rect.width, rect.y + rect.height)
-            cvRectangle(res, pt1, pt2, externalColor)
-            roi = cvGetSubRect(src, rect)
-            cnt = cvCreateImage(cvGetSize(roi), IPL_DEPTH_8U, 1)
 
-            cvCopy(roi, cnt)
-            self.symbols.append(Transformer(Ipl2QIm(cnt)))
-            rect = cvMinAreaRect2(contour)
-            self.info.append((cnt, rect.angle, rect.center, contour))
+            area = rect.width * rect.height
+            areas[rect.x] = area
+
+            # рисуем контур и обрамляющую рамку
+            cvRectangle(res, pt1, pt2, gray)
+            cvDrawContours(res, contour, white, white, 0)
+
+            # получаем область исходного изображения, на которой находится контур
+            roi = cvGetSubRect(src, rect)
+            # создаем два избражения для области с контуром с учетом каймы в 1 пиксель по краям
+            size = (roi.width + 2, roi.height + 2)
+            cnt = cvCreateImage(size, IPL_DEPTH_8U, 1)
+            tmp = cvCreateImage(size, IPL_DEPTH_8U, 1)
+            cvCopyMakeBorder(roi, cnt, (1, 1), 0)
+            cvCopyMakeBorder(roi, tmp, (1, 1), 0)
+            
+            # на полученном изображении еще раз находим контуры (туда могли попасть обрезки других контуров)
+            num, conts = cvFindContours(tmp, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, (0, 0))
+            # все обрезки закрашиваем черным
+            for cont in conts.hrange():
+                rect = cvBoundingRect(contour)
+                if rect.width * rect.height != area:
+                    cvDrawContours(cnt, cont, black, black, 0, -1)
+
+            # сохраняем изображение с выделенным контуром
+            messcontours[rect.x] = cnt
+
+        # площадь исходного изображения
+        srcarea = src.width * src.height
+
+        for k in sorted(messcontours.iterkeys()):
+            # если площадь контура меньше половины средней площади не будем сохранять ее
+            if areas[k] > srcarea * threshold:
+                self.symbols.append(Transformer(key, Ipl2QIm(messcontours[k])))
+
+
+            #rect = cvMinAreaRect2(contour)
+            #self.info.append((cnt, rect.angle, rect.center, contour))
+
+            
 
 
     # разбиение на символы на основе 'узких мест'
@@ -258,18 +306,18 @@ class Transformer():
 
     # групповая функция
     # сохранение символов
-    def saveSymbols(self, srckey, smbdir, ser):
+    def savesymbols(self, srckey, smbdir, ser):
         log.debug('saveSymbols(): %s' % colorize(srckey, YELLOW))
-        savedir = getcwd()
-        chdir(smbdir)
+        savedir = os.getcwd()
+        os.chdir(smbdir)
 
         i = 0
         for smb in self.symbols:
             img = smb.transforms[srckey]
-            self.save(img, '%d_%s.png' % (i, ser))
+            self.save(img, '_%d_%s.png' % (i, ser))
             i += 1
 
-        chdir(savedir)
+        os.chdir(savedir)
 
 
 
@@ -307,18 +355,25 @@ class Transformer():
 
 if __name__ == '__main__':
     app = QApplication([])
-    qimg = QImage('captcha/picture01')
+    qimg = QImage('/home/polzuka/inspirado/captcha/wmtake/13.gif')
     t = Transformer('orig', qimg)
-    t.resizeby('resize', t['orig'], 4, 4)
+    t.resizeby('resize', t['orig'], 3, 3)
     t.grayscale('grayscale', t['resize'], 2)
-    t.binarize('binarize', t['grayscale'], 200, CV_THRESH_BINARY)
+    t.binarize('binarize', t['grayscale'], 100, CV_THRESH_BINARY_INV)
 
     radius = 3
     kernel = cvCreateStructuringElementEx(radius * 2 + 1, radius * 2 + 1, radius, radius, CV_SHAPE_ELLIPSE)
+    '''
+    for i in xrange(7):
+        t.morphology('morphology%d' % i, t['binarize'], i, 5, kernel)
+    '''
     
-    t.morphology('morphology', t['binarize'], 1, 1, kernel)
-    t.breakSplit('breaksplit', t['morphology'], 0.2)
+    try:
+        t.contourSplit('breaksplit', t['binarize'], 0.001)
+    except Exception, e:
+        print e
+    
     t.normolize('origsplit', 'breaksplit', 20, 30)
-    t.saveSymbols('origsplit', '/home/polzuka/inspirado/symbols', 1)
+    #t.savesymbols('origsplit', '/home/polzuka/inspirado/symbols', 1)
     t.show()
     exit(app.exec_())

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from PyQt4.QtCore import QEventLoop, QFileInfo, QFile, QFileInfo, QUrl, QIODevice
+from PyQt4.QtCore import QEventLoop, QFileInfo, QFile, QFileInfo, QUrl, QIODevice, QTimer
 from PyQt4.QtGui import QApplication, QImage
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkDiskCache, QNetworkRequest
 from settings import JQUERY_PATH, CACHE_PATH, SAVE_PATH
-from base import getLog, colorize, RED, GREEN
+from base import getlog, colorize, RED, GREEN
 
-log = getLog('browser')
+log = getlog('browser')
 
 # Немного пофиксенный кеш
 # QNetworkDiskCache не сохраняет данные с флагом saveToDisk=False
@@ -47,21 +47,26 @@ class Browser(QWebPage):
 
     def __init__(self, autojquerify=True, debug=False):
         QWebPage.__init__(self)
-        self.debug = debug
         self.autojquerify = autojquerify
+        self.debug = debug
 
         self.cache = Cache()
         self.manager = Manager(debug=debug)
         self.loop = QEventLoop()
-        self.shown = False
         self.cache.setCacheDirectory(CACHE_PATH)
         self.manager.setCache(self.cache)
         self.setNetworkAccessManager(self.manager)
+
         self.loadFinished.connect(self.loop.quit)
 
     # Логгирование сообщений об ошибках при выполнении js
     def javaScriptConsoleMessage(self, msg, line, source):
         log.warning(colorize('jsconsole(): %s line %d: %s' % (source, line, msg), RED))
+
+    # Засыпание на ms милисекунд
+    def sleep(self, ms):
+        QTimer.singleShot(ms, self.loop.quit)
+        self.loop.exec_()
 
     # Выполнение js-скрипта
     def js(self, script):
@@ -107,7 +112,6 @@ class Browser(QWebPage):
 
     # Показ отладочного окна
     def show(self):
-        self.shown = True
         self.view = QWebView()
         self.view.setPage(self)
         self.view.show()
