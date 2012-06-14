@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import sys
+import signal
 from PyQt4.QtCore import QEventLoop, QFileInfo, QFile, QFileInfo, QUrl, QIODevice, QTimer
 from PyQt4.QtGui import QApplication, QImage
 from PyQt4.QtWebKit import QWebPage, QWebView
@@ -52,12 +54,18 @@ class Browser(QWebPage):
 
         self.cache = Cache()
         self.manager = Manager(debug=debug)
+        self.waitloadstart = QEventLoop()
         self.loop = QEventLoop()
         self.cache.setCacheDirectory(CACHE_PATH)
         self.manager.setCache(self.cache)
         self.setNetworkAccessManager(self.manager)
 
+        self.loadStarted.connect(self.onloadstarted)
         self.loadFinished.connect(self.loop.quit)
+
+    def onloadstarted(self):
+        self.loaded = True
+        self.loop.quit()
 
     # Логгирование сообщений об ошибках при выполнении js
     def javaScriptConsoleMessage(self, msg, line, source):
@@ -73,6 +81,18 @@ class Browser(QWebPage):
         log.debug('js(): evalute %s' % colorize(script))
         result = self.mainFrame().evaluateJavaScript(script).toString()
         log.debug('js(): result %s' % colorize(result))
+        
+        self.loaded = False
+        QTimer.singleShot(100, self.loop.quit)
+        self.loop.exec_()
+
+        if self.loaded:
+            QTimer.singleShot(10000, self.loop.quit)
+            self.loop.exec_()
+            self.loaded = False
+
+
+        self.loop.exec_()
         return result
 
     # Подгрузка на страницу jQuery
@@ -87,7 +107,6 @@ class Browser(QWebPage):
     def get(self, url, headers = None, pull = None):
         log.info('get(): url %s' % colorize(url))
         self.js('window.location = "%s"' % url)     # идем на url
-        self.loop.exec_()                           # ждем пока дососется страница
 
         if self.autojquerify:                       # если 
             self.jquerify()                         # подгружаем jQuery
@@ -115,3 +134,15 @@ class Browser(QWebPage):
         self.view = QWebView()
         self.view.setPage(self)
         self.view.show()
+
+if __name__ == '__main__':
+
+    def test():
+        b = Browser()
+        b.show()
+        b.get('http://www.google.com')
+
+    app = QApplication([])
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    QTimer.singleShot(0, test)
+    sys.exit(app.exec_())
