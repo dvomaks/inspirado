@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import sys
+import signal
 from PyQt4.QtCore import QEventLoop, QFileInfo, QFile, QFileInfo, QUrl, QIODevice, QTimer
 from PyQt4.QtGui import QApplication, QImage
 from PyQt4.QtWebKit import QWebPage, QWebView
@@ -25,9 +27,12 @@ class Manager(QNetworkAccessManager):
     def __init__(self, parent=None, debug=False):
         QNetworkAccessManager.__init__(self, parent)
         self.debug = debug
-
-    '''
+        self.loop = QEventLoop()
+        
+    
     def createRequest(self, op, request, device=None):
+        
+        '''
         request.setRawHeader('User-Agent', 'bebe')
         if self.debug:
             for header in request.rawHeaderList():
@@ -36,8 +41,16 @@ class Manager(QNetworkAccessManager):
             print type(request.originatingObject())
             print
         
+        print 'request started'
+        
+        reply.finished.connect(self.loop.quit)
+        self.loop.exec_()
+        print 'request finished'
+        return reply
+        '''
+        print 'request'
         return QNetworkAccessManager.createRequest(self, op, request, device)
-    '''
+    
 
 
 # Собственно, браузер
@@ -57,7 +70,21 @@ class Browser(QWebPage):
         self.manager.setCache(self.cache)
         self.setNetworkAccessManager(self.manager)
 
-        self.loadFinished.connect(self.loop.quit)
+        #self.loadFinished.connect(self.lf)
+        self.loadStarted.connect(self.ls)
+
+    def lf(self):
+        print 'quit start'
+        
+        loop.quit()
+        print 'quit finish'
+
+    def ls(self):
+        print 'exec start'
+        loop = QEventLoop()
+        self.loadFinished.connect(loop.quit)
+        loop.exec_()
+        print 'exec finish'
 
     # Логгирование сообщений об ошибках при выполнении js
     def javaScriptConsoleMessage(self, msg, line, source):
@@ -71,7 +98,7 @@ class Browser(QWebPage):
     # Выполнение js-скрипта
     def js(self, script):
         log.debug('js(): evalute %s' % colorize(script))
-        result = self.mainFrame().evaluateJavaScript(script).toString()
+        result = str(self.mainFrame().evaluateJavaScript(script).toString())
         log.debug('js(): result %s' % colorize(result))
         return result
 
@@ -87,7 +114,7 @@ class Browser(QWebPage):
     def get(self, url, headers = None, pull = None):
         log.info('get(): url %s' % colorize(url))
         self.js('window.location = "%s"' % url)     # идем на url
-        self.loop.exec_()                           # ждем пока дососется страница
+        #self.loop.exec_()                           # ждем пока дососется страница
 
         if self.autojquerify:                       # если 
             self.jquerify()                         # подгружаем jQuery
@@ -115,3 +142,18 @@ class Browser(QWebPage):
         self.view = QWebView()
         self.view.setPage(self)
         self.view.show()
+
+
+if __name__ == '__main__':
+
+    def test():
+        b = Browser()
+        b.show()
+        b.get('http://habrahabr.ru/posts/top/')
+        
+
+    app = QApplication([])
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    QTimer.singleShot(0, test)
+    sys.exit(app.exec_())
+    

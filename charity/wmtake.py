@@ -75,7 +75,7 @@ class Implem(Picker):
             b.js("$('div.news_box div.bn p').click()")
             b.sleep(7000)
 
-            if b.js("$('#mess-exec:visible').length"):
+            if not b.js("$('#mess-exec:visible').length"):
                 break
 
             b.js("$('#mess-exec p').click()")

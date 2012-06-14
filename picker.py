@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import sys
 import signal
 from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QApplication
