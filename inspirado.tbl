@@ -1,7 +1,12 @@
 CREATE TABLE purse (
-	id SERIAL PRIMARY KEY,
-	wmid CHAR(12) NOT NULL,
-	pid CHAR(12) NOT NULL,
-	type CHAR NOT NULL,
-	bl integer
+    id SERIAL PRIMARY KEY,
+    wmid CHAR(12) NOT NULL,
+    pid CHAR(12) NOT NULL,
+    type CHAR NOT NULL,
+    bl integer
+);
+
+CREATE TABLE site (
+    id SERIAL PRIMARY KEY,
+    implem VARCHAR(30) NOT NULL
 );

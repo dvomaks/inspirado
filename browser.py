@@ -24,9 +24,8 @@ class Cache(QNetworkDiskCache):
 # Менеджер с отладкой
 class Manager(QNetworkAccessManager):
 
-    def __init__(self, parent=None, debug=False):
+    def __init__(self, parent=None):
         QNetworkAccessManager.__init__(self, parent)
-        self.debug = debug
 
     '''
     def createRequest(self, op, request, device=None):
@@ -41,23 +40,32 @@ class Manager(QNetworkAccessManager):
         return QNetworkAccessManager.createRequest(self, op, request, device)
     '''
 
+class Waiter():
+    def __init__():
+        self.timer = 
 
-# Собственно, браузер
-# Умеет ходить на указанные url'ы и выполнять там разные js-скрипты
-# Использует пофиксенные кеш и менеджер
+    def wait(self, signal, timeout):
+        signal.connect()
+
+
+# Браузер, который умеет ходить на указанные url'ы и выполнять там разные js-скрипты
+# autojq - подгрузка JQuery к загруженной странице
 class Browser(QWebPage):
 
-    def __init__(self, autojquerify=True, debug=False):
+    def __init__(self, autojq=True):
         QWebPage.__init__(self)
-        self.autojquerify = autojquerify
-        self.debug = debug
+        self.autojq = autojq
 
         self.loop = QEventLoop()
+
+        # не получилось использовать просто QTimer.singleShot
+        # пришлось написать так
         self.timer = QTimer()
         self.timer.setSingleShot(True);
 
+        # фиксенные кеш и менеджер
         self.cache = Cache()
-        self.manager = Manager(debug=debug)
+        self.manager = Manager()
 
         self.cache.setCacheDirectory(CACHE_PATH)
         self.manager.setCache(self.cache)
@@ -83,19 +91,24 @@ class Browser(QWebPage):
     def onloadrecall(self):
         self.loop.quit()
 
-    # Логгирование сообщений об ошибках при выполнении js
+
+    # логгирование сообщений об ошибках при выполнении js
     def javaScriptConsoleMessage(self, msg, line, source):
         log.warning(colorize('jsconsole(): %s line %d: %s' % (source, line, msg), RED))
 
-    # Засыпание на ms милисекунд
+
+    # засыпание на ms милисекунд
     def sleep(self, ms):
         self.timer.timeout.connect(self.loop.quit)
         self.timer.start(ms)
         self.loop.exec_()
 
-    # Выполнение js-скрипта
+
+    # выполнение javascript... все не так просто
+    # выполнение js может вызвать загрузку страницы, которая будет выпоняться асинхронно
+    # нам требуется синхронная загрузка, поэтому лепим костыли
+    # 
     def js(self, script):
-        print 'JS 1'
         log.debug('js(): evalute %s' % colorize(script))
         result = self.mainFrame().evaluateJavaScript(script).toString()
         log.debug('js(): result %s' % colorize(result))
@@ -110,35 +123,38 @@ class Browser(QWebPage):
             self.timer.start(10000)
             self.loop.exec_()
 
-        print 'JS 2'
         return result
 
-    # Подгрузка на страницу jQuery
+
+    # подгрузка на страницу jQuery
     def jquerify(self):
-        log.info('jquerify(): load from %s' % colorize(JQUERY_PATH))
+        log.debug('jquerify(): load from %s' % colorize(JQUERY_PATH))
         jquery = open(JQUERY_PATH).read()
         self.mainFrame().evaluateJavaScript(jquery)
+
 
     # Высасывание страницы с указанного url
     # headers - правильные хидеры (например User-agent, Referrer), старые при этом затираются
     # pull - что выкачивать
-    def get(self, url, headers = None, pull = None):
-        log.info('get(): url %s' % colorize(url))
+    def get(self, url, headers=None, pull=None):
+        log.debug('get(): url %s' % colorize(url))
         self.js('window.location = "%s"' % url)     # идем на url
 
-        if self.autojquerify:                       # если 
+        if self.autojq:                             # если 
             self.jquerify()                         # подгружаем jQuery
+
 
     # Сохранение высосанных данных (например картинок)
     # Данные берутся из кеша по url'у  и сохраняются в path
     def save(self, url, path):
-        log.info('save(): %s to %s ' % (colorize(url), colorize(path)))
+        log.debug('save(): %s to %s ' % (colorize(url), colorize(path)))
         file = QFile(path)
         cached = self.cache.data(QUrl(url)).readAll()
         if file.open(QIODevice.WriteOnly):
             file.write(cached)
         file.close()
         return path
+
 
     # Получение картинки, сохраненной в кеше
     def image(self, url):
@@ -147,11 +163,13 @@ class Browser(QWebPage):
         img.loadFromData(cached.readAll())
         return img
 
+
     # Показ отладочного окна
     def show(self):
         self.view = QWebView()
         self.view.setPage(self)
         self.view.show()
+
 
 if __name__ == '__main__':
 

@@ -160,21 +160,21 @@ class Transformer(QObject):
             cvMorphologyEx(src, res, tmp, kernel, method, iterations)
             self.transforms[key] = res
 
-    # разделение на символы на основе контурного анализа
+    # Разделение на символы на основе контурного анализа
     # threshold - пороговое значение отношения площади обрамляющей рамки символа к исходному изображению
     def contourSplit(self, key, src, threshold=0):
         storage = cvCreateMemStorage(0)
         # cvFindContours портит изображение, на котором ищет контуры, поэтому создадим копию
         tmp = cvCloneImage(src)
-        # на res нарисуем найденные контуры и прямоугольники, их ограничивающие
+        # На res нарисуем найденные контуры и прямоугольники, их ограничивающие
         res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
         self.transforms[key] = res
 
-        # ищем контуры
+        # Ищем контуры
         num, contours = cvFindContours(tmp, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, (0, 0))
 
-        # контуры в contours хранятся в беспорядке
-        # нам нужно, что бы они шли по порядку слева направо
+        # Контуры в contours хранятся в беспорядке
+        # Нам нужно, что бы они шли по порядку слева направо
         messcontours = dict()
         areas = dict()
         for contour in contours.hrange():

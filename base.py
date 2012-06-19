@@ -7,11 +7,11 @@ RESET_SEQ = '\x1b[0m'
 COLOR_SEQ = '\x1b[1;%dm'
 
 def siteinfo(id):
-    return dict({'implem': 'wmtake'})
+    return dict({'implem': id})
 
 
 def purseinfo(id):
-    return dict({'purse': 'R168625933467'})
+    return dict({'purse': 'R' + id})
 
 # Разбор аргументов программы
 def parse(argv):
@@ -50,3 +50,7 @@ def getlog(logname):
 
 def colorize(message, color = WHITE):
     return COLOR_SEQ % color + message + RESET_SEQ
+
+
+if __name__ == '__main__':
+    parse(['run.py', '1', '1'])
