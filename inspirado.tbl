@@ -1,0 +1,7 @@
+CREATE TABLE purse (
+	id SERIAL PRIMARY KEY,
+	wmid CHAR(12) NOT NULL,
+	pid CHAR(12) NOT NULL,
+	type CHAR NOT NULL,
+	bl integer
+);

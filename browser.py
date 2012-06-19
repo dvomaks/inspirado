@@ -67,29 +67,21 @@ class Browser(QWebPage):
         self.loadFinished.connect(self.onloadfinished)
 
     def onloadstarted(self):
-        print 'loadstarted 1'
         self.timer.stop()
-        self.timer.timeout.disconnect()#(self.onloadrecall)
+        self.timer.timeout.disconnect()
         self.loaded = True
         self.loop.quit()
-        print 'loadstarted 2'
 
     def onloadfinished(self):
-        print 'loadfinished 1'
         self.timer.stop()
         self.timer.timeout.disconnect()
         self.loop.quit()
-        print 'loadfinished 2'
 
     def onloadtimeout(self):
-        print 'loadtimeout 1'
         self.loop.quit()
-        print 'loadtimeout 2'
 
     def onloadrecall(self):
-        print 'loadrecall 1'
         self.loop.quit()
-        print 'loadrecall 2'
 
     # Логгирование сообщений об ошибках при выполнении js
     def javaScriptConsoleMessage(self, msg, line, source):
