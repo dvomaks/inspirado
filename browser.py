@@ -40,15 +40,35 @@ class Manager(QNetworkAccessManager):
         return QNetworkAccessManager.createRequest(self, op, request, device)
     '''
 
+# 
+
 class Waiter():
-    def __init__():
-        self.timer = 
+    def __init__(self):
+        self.timer = QTimer()
+        self.timer.setSingleShot(True)
+        self.loop = QEventLoop()
+        self.timer.timeout.connect(self.ontimeout)
 
-    def wait(self, signal, timeout):
-        signal.connect()
+
+    def onsignal(self):
+        self.timer.stop()
+        self.loop.quit()
+        self.waited = True
 
 
-# Браузер, который умеет ходить на указанные url'ы и выполнять там разные js-скрипты
+    def ontimeout(self):
+        self.loop.quit()
+        self.waited = False
+
+
+    def wait(self, signal, ms):
+        signal.connect(self.onsignal)
+        self.timer.start(ms)
+        self.loop.exec_()
+        return self.waited
+
+
+# Браузер, который умеет ходить на указанные url'ы и выполнять там разные js
 # autojq - подгрузка JQuery к загруженной странице
 class Browser(QWebPage):
 
@@ -57,11 +77,7 @@ class Browser(QWebPage):
         self.autojq = autojq
 
         self.loop = QEventLoop()
-
-        # не получилось использовать просто QTimer.singleShot
-        # пришлось написать так
-        self.timer = QTimer()
-        self.timer.setSingleShot(True);
+        self.waiter = Waiter()
 
         # фиксенные кеш и менеджер
         self.cache = Cache()
@@ -71,26 +87,6 @@ class Browser(QWebPage):
         self.manager.setCache(self.cache)
         self.setNetworkAccessManager(self.manager)
 
-        self.loadStarted.connect(self.onloadstarted)
-        self.loadFinished.connect(self.onloadfinished)
-
-    def onloadstarted(self):
-        self.timer.stop()
-        self.timer.timeout.disconnect()
-        self.loaded = True
-        self.loop.quit()
-
-    def onloadfinished(self):
-        self.timer.stop()
-        self.timer.timeout.disconnect()
-        self.loop.quit()
-
-    def onloadtimeout(self):
-        self.loop.quit()
-
-    def onloadrecall(self):
-        self.loop.quit()
-
 
     # логгирование сообщений об ошибках при выполнении js
     def javaScriptConsoleMessage(self, msg, line, source):
@@ -99,29 +95,27 @@ class Browser(QWebPage):
 
     # засыпание на ms милисекунд
     def sleep(self, ms):
-        self.timer.timeout.connect(self.loop.quit)
-        self.timer.start(ms)
+        QTimer.singleShot(ms, self.loop.quit)
         self.loop.exec_()
 
 
     # выполнение javascript... все не так просто
     # выполнение js может вызвать загрузку страницы, которая будет выпоняться асинхронно
-    # нам требуется синхронная загрузка, поэтому лепим костыли
-    # 
+    # нам требуется синхронная загрузка, поэтому воспользуемся waiter'ом
     def js(self, script):
+        # выполняем js
         log.debug('js(): evalute %s' % colorize(script))
         result = self.mainFrame().evaluateJavaScript(script).toString()
         log.debug('js(): result %s' % colorize(result))
         
-        self.loaded = False
-        self.timer.timeout.connect(self.onloadrecall)
-        self.timer.start(10)
-        self.loop.exec_()
+        # подождем немножко, вдруг прилетит сигнал о начале загрузки
+        if self.waiter.wait(self.loadStarted, 10):
+            # началась загрузка, ждем ее окончания за разумное время
+            self.waiter.wait(self.loadFinished, 10000)
 
-        if self.loaded:
-            self.timer.timeout.connect(self.onloadtimeout)
-            self.timer.start(10000)
-            self.loop.exec_()
+            # подгружаем jQuery, если указано
+            if self.autojq:
+                self.jquerify()
 
         return result
 
@@ -139,9 +133,6 @@ class Browser(QWebPage):
     def get(self, url, headers=None, pull=None):
         log.debug('get(): url %s' % colorize(url))
         self.js('window.location = "%s"' % url)     # идем на url
-
-        if self.autojq:                             # если 
-            self.jquerify()                         # подгружаем jQuery
 
 
     # Сохранение высосанных данных (например картинок)
@@ -173,13 +164,21 @@ class Browser(QWebPage):
 
 if __name__ == '__main__':
 
-    def test():
+    def test1():
         b = Browser()
         b.show()
-        b.get('http://www.google.com')
-        b.js("$('#gbqfq').val('hello world')")
+        b.get('http://www.opennet.ru')
+        print b.js("$('div').length")
+        b.js("$('input:eq(1)').val('hello')")
+
+    def ontimeout():
+        print 10
+
+    def test2():
+        print 0
+        QTimer.singleShot(5000, ontimeout)
 
     app = QApplication([])
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    QTimer.singleShot(0, test)
+    QTimer.singleShot(0, test1)
     sys.exit(app.exec_())
