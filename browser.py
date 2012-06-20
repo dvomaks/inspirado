@@ -5,7 +5,7 @@ import signal
 from PyQt4.QtCore import QEventLoop, QFileInfo, QFile, QFileInfo, QUrl, QIODevice, QTimer
 from PyQt4.QtGui import QApplication, QImage
 from PyQt4.QtWebKit import QWebPage, QWebView
-from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkDiskCache, QNetworkRequest
+from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkDiskCache, QNetworkRequest, QNetworkProxy
 from settings import JQUERY_PATH, CACHE_PATH, SAVE_PATH
 from base import getlog, colorize, RED, GREEN
 
@@ -82,9 +82,11 @@ class Browser(QWebPage):
         # фиксенные кеш и менеджер
         self.cache = Cache()
         self.manager = Manager()
+        self.proxy = QNetworkProxy(QNetworkProxy.Socks5Proxy, 'localhost', 9050)
 
         self.cache.setCacheDirectory(CACHE_PATH)
         self.manager.setCache(self.cache)
+        self.manager.setProxy(self.proxy)
         self.setNetworkAccessManager(self.manager)
 
 

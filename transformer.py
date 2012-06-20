@@ -80,12 +80,15 @@ class Transformer(QObject):
     def __getitem__(self, key):
         return self.transforms[key]
 
+
     def __setitem__(self, key, value):
         self.transforms[key] = value
+
 
     # последнее преобразование
     def last(self):
         return self.transforms.values()[-1]
+
 
     # применительно только к символам
     def slice(self, srckey):
@@ -94,24 +97,29 @@ class Transformer(QObject):
             res.append(smb[srckey])
         return res
 
+
     # подгрузка изображения QImage
     def load(self, key, src):
         self.transforms[key] = QIm2Ipl(src)
         log.debug('load(): %s' % colorize(key, YELLOW))
 
+
     def save(self, src, path):
         log.debug('save(): %s' % colorize(path, YELLOW))
         cvSaveImage(path, src);
+
 
     # подгрузка изображения из path
     def open(self, key, path):
         log.debug('open(): %s from %s' % (colorize(key, YELLOW), colorize(path, YELLOW)))
         self.transforms[key] = cvLoadImage(path)
 
+
     # копирование изображения
     def clone(self, key, src):
         log.debug('clone(): %s' % colorize(key, YELLOW))
         self.transforms[key] = cvCloneImage(src)
+
 
     # преобразование в оттенки серого
     def grayscale(self, key, src, flags=0):
@@ -120,12 +128,14 @@ class Transformer(QObject):
         cvConvertImage(src, res, flags)
         self.transforms[key] = res
 
+
     # бинаризация по указанному порогу
     def binarize(self, key, src, threshold, method):
         log.debug('binarize(): %s' % colorize(key, YELLOW))
         res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
         cvThreshold(src, res, threshold, 255, method)
         self.transforms[key] = res
+
 
     # масштабирование
     def resizeby(self, key, src, scaleX, scaleY, method=1):
@@ -134,12 +144,14 @@ class Transformer(QObject):
         cvResize(src, res, method)
         self.transforms[key] = res
 
+
     # масштабирование
     def resizeto(self, key, src, resultX, resultY, method=1):
         log.debug('resizeto(): %s' % colorize(key, YELLOW))
         res = cvCreateImage((resultX, resultY), src.depth, src.nChannels)
         cvResize(src, res, method)
         self.transforms[key] = res
+
 
     # морфологические преобразования
     # method - тип преобразования: 
@@ -159,6 +171,7 @@ class Transformer(QObject):
             res = cvCreateImage(cvGetSize(src), src.depth, src.nChannels)
             cvMorphologyEx(src, res, tmp, kernel, method, iterations)
             self.transforms[key] = res
+
 
     # Разделение на символы на основе контурного анализа
     # threshold - пороговое значение отношения площади обрамляющей рамки символа к исходному изображению
@@ -294,6 +307,7 @@ class Transformer(QObject):
             cvCopy(roi, smb)
             self.symbols.append(Transformer(key, Ipl2QIm(smb)))
 
+
     # групповая функция
     # установка стандартных размеров для символов
     def normolize(self, dstkey, srckey, normX, normY):
@@ -304,6 +318,7 @@ class Transformer(QObject):
             imgX = size.width
             imgY = size.height
             smb.resizeto(dstkey, img, normX, normY)
+
 
     # групповая функция
     # сохранение символов

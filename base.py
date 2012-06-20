@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from logging import getLogger, FileHandler, Formatter, DEBUG
+from TorCtl
 
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = (i + 30 for i in range(8))
 RESET_SEQ = '\x1b[0m'
@@ -50,6 +51,10 @@ def getlog(logname):
 
 def colorize(message, color = WHITE):
     return COLOR_SEQ % color + message + RESET_SEQ
+
+
+def newnym():
+
 
 
 if __name__ == '__main__':

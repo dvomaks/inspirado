@@ -79,3 +79,5 @@ class Implem(Picker):
                 break
 
             b.js("$('#mess-exec p').click()")
+
+        self.quit()
