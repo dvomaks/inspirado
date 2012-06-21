@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from logging import getLogger, FileHandler, Formatter, DEBUG
-from TorCtl
+from TorCtl import TorCtl
 
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = (i + 30 for i in range(8))
 RESET_SEQ = '\x1b[0m'
@@ -35,10 +35,6 @@ def parse(argv):
     raise Exception('Invalid number of arguments.\n' + 'Usage: %s site_id [purse_id]' % scriptname)
 
 
-
-
-
-
 def getlog(logname):
     formatter = Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
     handler = FileHandler('picker.log')
@@ -54,7 +50,8 @@ def colorize(message, color = WHITE):
 
 
 def newnym():
-
+    conn = TorCtl.connect()
+    conn.send_signal("NEWNYM")
 
 
 if __name__ == '__main__':

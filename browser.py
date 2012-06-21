@@ -7,7 +7,7 @@ from PyQt4.QtGui import QApplication, QImage
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkDiskCache, QNetworkRequest, QNetworkProxy
 from settings import JQUERY_PATH, CACHE_PATH, SAVE_PATH
-from base import getlog, colorize, RED, GREEN
+from base import newnym, getlog, colorize, RED, GREEN
 
 log = getlog('browser')
 
@@ -82,7 +82,7 @@ class Browser(QWebPage):
         # фиксенные кеш и менеджер
         self.cache = Cache()
         self.manager = Manager()
-        self.proxy = QNetworkProxy(QNetworkProxy.Socks5Proxy, 'localhost', 9050)
+        self.proxy = QNetworkProxy(QNetworkProxy.Socks5Proxy, '127.0.0.1', 9050)
 
         self.cache.setCacheDirectory(CACHE_PATH)
         self.manager.setCache(self.cache)
@@ -167,11 +167,34 @@ class Browser(QWebPage):
 if __name__ == '__main__':
 
     def test1():
+        '''
         b = Browser()
         b.show()
         b.get('http://www.opennet.ru')
         print b.js("$('div').length")
         b.js("$('input:eq(1)').val('hello')")
+        '''
+        
+
+        b = Browser()
+        b.show()
+        b.get('http://2ip.ru/')
+        print b.js("$('div.ip big').text()")
+
+        '''
+        newnym()
+        b = Browser()
+        b.show()
+        b.get('http://2ip.ru/')
+        print b.js("$('div.ip big').text()")
+
+        newnym()
+        b = Browser()
+        b.show()
+        b.get('http://2ip.ru/')
+        print b.js("$('div.ip big').text()")
+        '''
+     
 
     def ontimeout():
         print 10
