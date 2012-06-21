@@ -11,6 +11,9 @@ from settings import IMPLEM_PATH, HOST, USER, DB, PASSWORD
 
 
 def run():
+    proxy = QNetworkProxy(QNetworkProxy.Socks5Proxy, '127.0.0.1', 9050)
+    QNetworkProxy.setApplicationProxy(proxy)
+    
     connstr = "host='%s' dbname='%s' user='%s' password='%s'" % (HOST, DB, USER, PASSWORD)
     conn = connect(connstr)
     cursor = conn.cursor(cursor_factory=DictCursor)
