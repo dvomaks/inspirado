@@ -11,15 +11,13 @@ log = getlog('wmtake')
 
 class Implem(Picker):
 
-    size = (20, 30)
-
     def runup(self):
         b = Browser()
         symbolqty = 5
 
         for i in xrange(100):
             print i
-            b.get('http://wmtake.ru/m.base/bonus.php')
+            b.get('http://sms-webmoney.ru/')
             captcha = b.js('$("#scode-pic img")[0].src')
             b.save(captcha, '/home/polzuka/inspirado/captcha/wmtake/%02d.gif' % i)
 
@@ -49,7 +47,7 @@ class Implem(Picker):
         # создаем браузер, которым будем ходить по wmtake.ru
         b = Browser()
         # сщздаем анализатор, которым будем распознавать капчу
-        a = Analyzer(Implem.size, '123456789')
+        a = Analyzer(20, 30, '123456789')
 
         symbolqty = 5
 
@@ -71,16 +69,16 @@ class Implem(Picker):
 
             t.contourSplit('breaksplit', t['binarize'], 0.001)
             if len(t.symbols) != symbolqty:
-                log.debug(colorize('INCORRECT SYMBOL NUMBER', RED))
+                log.debug('INCORRECT SYMBOL NUMBER')
                 log.debug('LOADING PAGE WITH WM BONUS')
                 b.get('http://wmtake.ru/m.base/bonus.php')
                 continue
 
-            t.normolize('origsplit', 'breaksplit', Implem.size)
+            t.normolize('origsplit', 'breaksplit', 20, 30)
             symbols = t.slice('origsplit')
             log.debug('RECOGNITION CAPTCHA')
             code = a.captcha(symbols)
-            log.debug('ANALYZE RESULT: %s' % colorize(code))
+            log.debug('ANALYZE RESULT: %s' % colorize(code, YELLOW))
             del t
             print code
 
@@ -88,7 +86,7 @@ class Implem(Picker):
             b.js("$('#scode').val('%s')" % code)
             b.js("$('#purse').val('%s')" % self.info['purse'])
             b.js("$('div.news_box div.bn p').click()")
-            b.sleep(10)
+            b.sleep(1000)
 
             if not b.js("$('#mess-exec:visible').length"):
                 log.debug('FINISH')

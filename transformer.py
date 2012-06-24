@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import os
 from sys import exit
 from collections import OrderedDict
@@ -11,12 +12,15 @@ from opencv.highgui import *
 from opencv import adaptors
 from opencv.adaptors import PIL2Ipl
 from PIL import Image
-from base import getlog, colorize, RED, GREEN, YELLOW
+from base import getlog, colorize, RED, GREEN
+
 
 log = getlog('transformer')
 
+
 class TransformError(Exception):
     pass
+
 
 # преобразование изображений разных форматов друг в друга
 def QIm2PIL(qimg):
@@ -27,7 +31,10 @@ def QIm2PIL(qimg):
     fp.write(buff.data())
     buff.close()
     fp.seek(0)
-    return Image.open(fp)
+    pilimg = Image.open(fp)
+    if pilimg.mode == 'P':
+        return pilimg.convert('L')
+    return pilimg
 
 
 def PIL2QIm(pilimg):
@@ -76,6 +83,7 @@ class Transformer(QObject):
         self.symbols = []
         self.info = []
 
+
     # переопределение []
     def __getitem__(self, key):
         return self.transforms[key]
@@ -92,6 +100,7 @@ class Transformer(QObject):
 
     # применительно только к символам
     def slice(self, srckey):
+        log.debug('slice(): srckey: %s, len: %s' % colorize((srckey, len(self.symbols))))
         res = []
         for smb in self.symbols:
             res.append(smb[srckey])
@@ -101,29 +110,29 @@ class Transformer(QObject):
     # подгрузка изображения QImage
     def load(self, key, src):
         self.transforms[key] = QIm2Ipl(src)
-        log.debug('load(): %s' % colorize(key, YELLOW))
+        log.debug('load(): %s' % colorize(key))
 
 
     def save(self, src, path):
-        log.debug('save(): %s' % colorize(path, YELLOW))
+        log.debug('save(): %s' % colorize(path))
         cvSaveImage(path, src);
 
 
     # подгрузка изображения из path
     def open(self, key, path):
-        log.debug('open(): %s from %s' % (colorize(key, YELLOW), colorize(path, YELLOW)))
+        log.debug('open(): %s from %s' % (colorize(key, path)))
         self.transforms[key] = cvLoadImage(path)
 
 
     # копирование изображения
     def clone(self, key, src):
-        log.debug('clone(): %s' % colorize(key, YELLOW))
+        log.debug('clone(): %s' % colorize(key))
         self.transforms[key] = cvCloneImage(src)
 
 
     # преобразование в оттенки серого
     def grayscale(self, key, src, flags=0):
-        log.debug('garyscale(): %s' % colorize(key, YELLOW))
+        log.debug('garyscale(): %s' % colorize(key))
         res = cvCreateImage(cvGetSize(src), src.depth, 1)
         cvConvertImage(src, res, flags)
         self.transforms[key] = res
@@ -131,7 +140,7 @@ class Transformer(QObject):
 
     # бинаризация по указанному порогу
     def binarize(self, key, src, threshold, method):
-        log.debug('binarize(): %s' % colorize(key, YELLOW))
+        log.debug('binarize(): %s' % colorize(key))
         res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
         cvThreshold(src, res, threshold, 255, method)
         self.transforms[key] = res
@@ -139,7 +148,7 @@ class Transformer(QObject):
 
     # масштабирование
     def resizeby(self, key, src, scaleX, scaleY, method=1):
-        log.debug('resizeby(): %s' % colorize(key, YELLOW))
+        log.debug('resizeby(): %s' % colorize(key))
         res = cvCreateImage((src.width * scaleX, src.height * scaleY), src.depth, src.nChannels)
         cvResize(src, res, method)
         self.transforms[key] = res
@@ -147,7 +156,7 @@ class Transformer(QObject):
 
     # масштабирование
     def resizeto(self, key, src, resultX, resultY, method=1):
-        log.debug('resizeto(): %s' % colorize(key, YELLOW))
+        log.debug('resizeto(): %s' % colorize(key))
         res = cvCreateImage((resultX, resultY), src.depth, src.nChannels)
         cvResize(src, res, method)
         self.transforms[key] = res
@@ -157,7 +166,7 @@ class Transformer(QObject):
     # method - тип преобразования: 
     # 0-erode, 1-dilate, 2-CV_MOP_OPEN, 3-CV_MOP_CLOSE, 4-CV_MOP_GRADIENT, 5-CV_MOP_TOPHAT, 6-CV_MOP_BLACKHAT
     def morphology(self, key, src, method, iterations=1, kernel=None):
-        log.debug('morphology(): %s' % colorize(key, YELLOW))
+        log.debug('morphology(): %s' % colorize(key))
         tmp = cvCreateImage(cvGetSize(src), src.depth, src.nChannels)
         if not kernel:
             kernel = cvCreateStructuringElementEx(3, 3, 1, 1, CV_SHAPE_ELLIPSE)
@@ -241,7 +250,7 @@ class Transformer(QObject):
     # разбиение на символы на основе 'узких мест'
     # threshold - пороговое значение в долях
     def breakSplit(self, key, src, threshold=0):
-        log.debug('breakSplit(): %s' % colorize(key, YELLOW))
+        log.debug('breakSplit(): %s' % colorize(key))
         storage = cvCreateMemStorage(0)
         res = cvCloneImage(src)
 
@@ -310,20 +319,20 @@ class Transformer(QObject):
 
     # групповая функция
     # установка стандартных размеров для символов
-    def normolize(self, dstkey, srckey, normX, normY):
-        log.debug('normolize(): %s' % colorize(srckey, YELLOW))
+    def normolize(self, dstkey, srckey, normsize):
+        log.debug('normolize(): dstkey: %s, srckey: %s, size: %sx%s' % colorize((dstkey, srckey, normsize[0], normsize[1])))
         for smb in self.symbols:
             img = smb.transforms[srckey]
             size = cvGetSize(img)
             imgX = size.width
             imgY = size.height
-            smb.resizeto(dstkey, img, normX, normY)
+            smb.resizeto(dstkey, img, normsize[0], normsize[1])
 
 
     # групповая функция
     # сохранение символов
     def savesymbols(self, srckey, smbdir, ser):
-        log.debug('saveSymbols(): %s' % colorize(srckey, YELLOW))
+        log.debug('saveSymbols(): %s' % colorize(srckey))
         savedir = os.getcwd()
         os.chdir(smbdir)
 

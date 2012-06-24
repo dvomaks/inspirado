@@ -1,33 +1,38 @@
 # -*- coding: utf-8 -*-
 
+import sys
 from opencv.cv import *
+from PyQt4.QtGui import QApplication
 from picker import Picker
 from browser import Browser
 from transformer import Transformer, TransformError
 from analyzer import Analyzer
 from base import getlog, colorize, RED, GREEN, YELLOW
+from settings import CAPTCHA_PATH, SYMBOLS_PATH
 
-log = getlog('wmtake')
+log = getlog('exchangecity')
 
 class Implem(Picker):
 
+    name = 'exchangecity'
     size = (20, 30)
 
-    def runup(self):
+
+    def collect(self):
         b = Browser()
         symbolqty = 5
 
         for i in xrange(100):
-            print i
-            b.get('http://wmtake.ru/m.base/bonus.php')
-            captcha = b.js('$("#scode-pic img")[0].src')
-            b.save(captcha, '/home/polzuka/inspirado/captcha/wmtake/%02d.gif' % i)
+            log.info('LOAD PAGE WITH CAPTCHA')
+            b.get('http://exchangecity.ru/?cmd=bonus')
+            captcha = 'http://exchangecity.ru/include/anti_robot.php'
+            b.save(captcha, CAPTCHA_PATH + Implem.name + '/%02d.png' % i)
 
             t = Transformer()
             t.load('orig', b.image(captcha))
             t.resizeby('resize', t['orig'], 2, 2)
             t.grayscale('grayscale', t['resize'], 2)
-            t.binarize('binarize', t['grayscale'], 150, CV_THRESH_BINARY_INV)
+            t.binarize('binarize', t['grayscale'], 200, CV_THRESH_BINARY_INV)
 
             '''
             radius = 3
@@ -36,20 +41,26 @@ class Implem(Picker):
             '''
 
             t.contourSplit('breaksplit', t['binarize'], 0.001)
+
             if len(t.symbols) != symbolqty:
+                log.debug(colorize('INCORRECT SYMBOL NUMBER', RED))
                 continue
 
-            t.normolize('origsplit', 'breaksplit', 20, 30)
-            t.savesymbols('origsplit', '/home/polzuka/inspirado/symbols/wmtake', '%02d' % i)
+            t.normolize('origsplit', 'breaksplit', Implem.size)
+            t.savesymbols('origsplit', SYMBOLS_PATH + Implem.name, '%02d' % i)
             del t
+
+
+    def analyze(self):
+        raise NotImplementedError('This method is not implemented')
 
 
     def pickup(self):
 
         # создаем браузер, которым будем ходить по wmtake.ru
         b = Browser()
-        # сщздаем анализатор, которым будем распознавать капчу
-        a = Analyzer(Implem.size, '123456789')
+        # создаем анализатор, которым будем распознавать капчу
+        a = Analyzer(20, 30, '123456789ABCDEFGHIJKLMNPQRSTUVWXYZ')
 
         symbolqty = 5
 
@@ -76,7 +87,7 @@ class Implem(Picker):
                 b.get('http://wmtake.ru/m.base/bonus.php')
                 continue
 
-            t.normolize('origsplit', 'breaksplit', Implem.size)
+            t.normolize('origsplit', 'breaksplit', 20, 30)
             symbols = t.slice('origsplit')
             log.debug('RECOGNITION CAPTCHA')
             code = a.captcha(symbols)
@@ -88,7 +99,7 @@ class Implem(Picker):
             b.js("$('#scode').val('%s')" % code)
             b.js("$('#purse').val('%s')" % self.info['purse'])
             b.js("$('div.news_box div.bn p').click()")
-            b.sleep(10)
+            b.sleep(1000)
 
             if not b.js("$('#mess-exec:visible').length"):
                 log.debug('FINISH')
@@ -99,3 +110,9 @@ class Implem(Picker):
             b.js("$('#mess-exec p').click()")
 
         self.quit()
+
+
+if __name__ == '__main__':
+    info = dict({'mode': 'collect'})
+    implem = Implem(info)
+    sys.exit(implem.exec_())

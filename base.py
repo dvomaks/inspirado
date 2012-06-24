@@ -45,14 +45,19 @@ def getlog(logname):
     return logger
 
 
-def colorize(message, color = WHITE):
-    return COLOR_SEQ % color + message + RESET_SEQ
+def colorize(message, color=YELLOW):
+    if isinstance(message, (list, tuple)):
+        return tuple(map(lambda el: COLOR_SEQ % color + str(el) + RESET_SEQ, message))
+    return COLOR_SEQ % color + str(message) + RESET_SEQ
 
 
 def newnym():
+    print 'NEWNYM'
     conn = TorCtl.connect()
     conn.send_signal("NEWNYM")
 
 
 if __name__ == '__main__':
-    parse(['run.py', '1', '1'])
+    #parse(['run.py', '1', '1'])
+    print colorize('ololo')
+    print colorize((True, 'lalala'))
