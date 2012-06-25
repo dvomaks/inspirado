@@ -19,31 +19,36 @@ class Picker(QApplication):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         self.info = info
+        QTimer.singleShot(0, self.start)          
+
+
+    def start(self):
 
         # выбираем нужный режим
-        if info['mode'] == 'collect':
-            mode = self.collect
-        elif info['mode'] == 'analyze':
-            mode = self.analyze
-        elif info['mode'] == 'pickup':
-            mode = self.pickup
+        if self.info['mode'] == 'collect':
+            self.collect()
 
-        QTimer.singleShot(0, mode)
+        elif self.info['mode'] == 'analyze':
+            self.analyze()
 
-        print info
-
-        if info['mode'] == 'pickup':
+        elif self.info['mode'] == 'pickup':
             # ставим Tor в качестве прокси, чтобы ходить на сайт по многу раз
-            log.info('tor proxy: %s' % (colorize('%s:%s' % (TOR_HOST, TOR_PORT))))
             proxy = QNetworkProxy(QNetworkProxy.Socks5Proxy, TOR_HOST, TOR_PORT)
             QNetworkProxy.setApplicationProxy(proxy)
-            '''
+
             b = Browser()
-            #b.show()
             b.get('http://2ip.ru/')
             ip = b.js("$('div.ip big').text()")
-            print ip
-            '''
+            hostname = $('.ip-info-entry table:eq(1) tr:eq(0) td').text().trim()
+            os = $('.ip-info-entry table:eq(1) tr:eq(1) td').text().trim()
+            browser = $('.ip-info-entry table:eq(1) tr:eq(2) td').text().trim()
+            location = $('.ip-info-entry table:eq(1) tr:eq(3) td').text().trim()
+            provider = $('.ip-info-entry table:eq(1) tr:eq(4) td').text().trim()
+
+            log.info('start(): proxy: %s:%s, ip: %s, hostname: %s, os: %s, browser: %s, location: %s, provider: %s' % (colorize((TOR_HOST, TOR_PORT, ip, hostname, os, browser, location, provider]))))
+
+            self.pickup()
+
 
 
     # выкачивание с сайта тонн капчи и разбиение ее на символы
