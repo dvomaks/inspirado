@@ -36,7 +36,7 @@ def parse(argv):
 
 
 def getlog(logname):
-    formatter = Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+    formatter = Formatter('%(asctime)s %(name)-10s %(levelname)-8s %(message)s', '%d-%m-%y %H:%M:%S')
     handler = FileHandler('picker.log')
     handler.setFormatter(formatter)
     logger = getLogger(logname)
@@ -54,10 +54,13 @@ def colorize(message, color=YELLOW):
 def newnym():
     print 'NEWNYM'
     conn = TorCtl.connect()
-    conn.send_signal("NEWNYM")
+    conn.send_signal('NEWNYM')
 
 
 if __name__ == '__main__':
     #parse(['run.py', '1', '1'])
-    print colorize('ololo')
-    print colorize((True, 'lalala'))
+    #print colorize('ololo')
+    #print colorize((True, 'lalala'))
+
+    log = getlog('test')
+    log.debug('ololo')
