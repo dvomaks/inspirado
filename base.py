@@ -36,7 +36,7 @@ def parse(argv):
 
 
 def getlog(logname):
-    formatter = Formatter('%(asctime)s %(name)-10s %(levelname)-8s %(message)s', '%d-%m-%y %H:%M:%S')
+    formatter = Formatter('%(asctime)s %(name)-11s %(levelname)-8s %(message)s', '%d-%m-%y %H:%M:%S')
     handler = FileHandler('picker.log')
     handler.setFormatter(formatter)
     logger = getLogger(logname)

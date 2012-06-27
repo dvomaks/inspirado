@@ -39,13 +39,14 @@ class Picker(QApplication):
             b = Browser()
             b.get('http://2ip.ru/')
             ip = b.js("$('div.ip big').text()")
-            hostname = $('.ip-info-entry table:eq(1) tr:eq(0) td').text().trim()
-            os = $('.ip-info-entry table:eq(1) tr:eq(1) td').text().trim()
-            browser = $('.ip-info-entry table:eq(1) tr:eq(2) td').text().trim()
-            location = $('.ip-info-entry table:eq(1) tr:eq(3) td').text().trim()
-            provider = $('.ip-info-entry table:eq(1) tr:eq(4) td').text().trim()
+            hostname = b.js("$('.ip-info-entry table:eq(1) tr:eq(0) td').text().trim()")
+            os = b.js("$('.ip-info-entry table:eq(1) tr:eq(1) td').text().trim()")
+            browser = b.js("$('.ip-info-entry table:eq(1) tr:eq(2) td').text().trim()")
+            location = b.js("$('.ip-info-entry table:eq(1) tr:eq(3) td').text().trim()")
+            provider = b.js("$('.ip-info-entry table:eq(1) tr:eq(4) td').text().trim()")
 
-            log.info('start(): proxy: %s:%s, ip: %s, hostname: %s, os: %s, browser: %s, location: %s, provider: %s' % (colorize((TOR_HOST, TOR_PORT, ip, hostname, os, browser, location, provider]))))
+            log.info('start(): proxy: %s:%s, ip: %s, hostname: %s, os: %s, browser: %s, location: %s, provider: %s' % 
+                     (colorize((TOR_HOST, TOR_PORT, ip, hostname, os, browser, location, provider))))
 
             self.pickup()
 

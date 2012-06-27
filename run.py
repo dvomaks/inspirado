@@ -23,8 +23,8 @@ def run():
     for purse in purses:    
         print '*** ', purse
         #if purse['pid'] in ['113879698282', '379498666155'] :
-        if purse['pid'] in ['113879698282'] :
-            continue
+        #if purse['pid'] in ['113879698282'] :
+        #    continue
         for site in sites:
             print '* ', site
             #site = dict({'implem': 'iptest'})

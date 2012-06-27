@@ -52,14 +52,12 @@ class Waiter():
 
 
     def onsignal(self):
-        log.debug('onsignal(): excellent')
         self.timer.stop()
         self.loop.quit()
         self.waited = True
 
 
     def ontimeout(self):
-        log.debug('ontimeout(): queerly')
         self.loop.quit()
         self.waited = False
 
@@ -102,10 +100,10 @@ class Browser(QWebPage):
 
     # засыпание на sec секунд
     def sleep(self, sec):
-        log.debug('sleep(): start')
+        log.info('sleep(): start')
         QTimer.singleShot(sec * 1000, self.loop.quit)
         self.loop.exec_()
-        log.debug('sleep(): finish')
+        log.info('sleep(): finish')
 
 
     # выполнение javascript... все не так просто
@@ -122,8 +120,10 @@ class Browser(QWebPage):
         if self.waiter.wait(self.loadStarted, 30):
             # началась загрузка, ждем ее окончания за разумное время
             log.debug('js(): loading start')
-            self.waiter.wait(self.loadFinished, self.timeoutsec * 1000)
-            log.debug('js(): loading fifnish')
+            if self.waiter.wait(self.loadFinished, self.timeoutsec * 1000):
+                log.debug('js(): loading fifnish')
+            else:
+                log.debug('js(): loading timeout')
 
             # подгружаем jQuery, если указано
             if self.autojq:
@@ -164,8 +164,10 @@ class Browser(QWebPage):
         log.info('image(): from %s' % colorize(url))
         cached = self.cache.data(QUrl(url))
         img = QImage()
-        img.loadFromData(cached.readAll())
-        return img
+        try:
+            img.loadFromData(cached.readAll())
+        finally:
+            return img
 
 
     # показ отладочного окна
