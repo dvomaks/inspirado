@@ -16,6 +16,7 @@ class Implem(Picker):
 
     name = 'exchangecity'
     size = (20, 30)
+    charset = '123456789ABCDEFGHIJKLMNPQRSTUVWXYZ'
 
 
     def collect(self):
@@ -52,7 +53,10 @@ class Implem(Picker):
 
 
     def analyze(self):
-        raise NotImplementedError('This method is not implemented')
+        a = Analyzer(Implem.name, Implem.size, Implem.charset)
+        a.prepare()
+        a.train()
+        self.quit()
 
 
     def pickup(self):
@@ -113,6 +117,6 @@ class Implem(Picker):
 
 
 if __name__ == '__main__':
-    info = dict({'mode': 'collect'})
+    info = dict({'mode': 'analyze'})
     implem = Implem(info)
     sys.exit(implem.exec_())

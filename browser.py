@@ -94,8 +94,8 @@ class Browser(QWebPage):
 
 
     # логгирование сообщений об ошибках при выполнении js
-    def javaScriptConsoleMessage(self, msg, line, source):
-        log.warning(colorize('jsconsole(): %s line %d: %s' % (source, line, msg), RED))
+    #def javaScriptConsoleMessage(self, msg, line, source):
+        #log.warning(colorize('jsconsole(): %s line %d: %s' % (source, line, msg), RED))
 
 
     # засыпание на sec секунд
@@ -164,10 +164,8 @@ class Browser(QWebPage):
         log.info('image(): from %s' % colorize(url))
         cached = self.cache.data(QUrl(url))
         img = QImage()
-        try:
-            img.loadFromData(cached.readAll())
-        finally:
-            return img
+        img.loadFromData(cached.readAll())
+        return img
 
 
     # показ отладочного окна

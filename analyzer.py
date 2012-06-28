@@ -4,33 +4,38 @@ import os
 import re
 from pyfann import libfann
 from opencv.highgui import cvLoadImage, CV_LOAD_IMAGE_GRAYSCALE
-from settings import SYMBOL_FILTER
+from settings import SYMBOL_FILTER, SYMBOLS_PATH, NETS_PATH,TRAINS_PATH
 from base import getlog, colorize, RED, GREEN
 
 
 log = getlog('anayzer')
 
 
+# Нейронная сеть для распознавния капчи
 class Analyzer():
 
-    def __init__(self, picsize, charset):
+    # implemname - имя реализации
+    # picsize - размер картинки, содержащей один символ (x, y)
+    # charset - строка, содержащая все символы, встречающиеся в капче
+    def __init__(self, implemname, picsize, charset):
+        self.implemname = implemname
         self.charset = charset
-        self.inputNum = picsize[0] * picsize[1]
-        self.outputNum = len(charset)
-        self.hiddenNum = self.inputNum / 3
-        self.layersNum = 3
+        self.input = picsize[0] * picsize[1]
+        self.output = len(charset)
+        self.hidden = self.input / 3
+        self.layers = 3
 
         self.desiredError = 0.00006
         self.maxEpochs = 50000
         self.epochsBetweenReports = 1000
 
         self.ann = libfann.neural_net()
-        self.ann.create_sparse_array(self.layersNum, (self.inputNum, self.hiddenNum, self.outputNum))
+        self.ann.create_sparse_array(self.layers, (self.input, self.hidden, self.output))
         self.ann.set_activation_function_hidden(libfann.SIGMOID_SYMMETRIC_STEPWISE)
         self.ann.set_activation_function_output(libfann.SIGMOID_SYMMETRIC_STEPWISE)
 
-        log.info('init(): size: %sx%s, charset: %s, input: %s, hidden: %s, output: %s' % 
-                 colorize((picsize[0], picsize[1], charset, self.inputNum, self.hiddenNum, self.outputNum)))
+        log.info('init(): implemname: %s, size: %sx%s, charset: %s, input: %s, hidden: %s, output: %s' % 
+                 colorize((implemname, picsize[0], picsize[1], charset, self.input, self.hidden, self.output)))
  
 
     def getdata(self, img):
@@ -47,33 +52,45 @@ class Analyzer():
         return data
     
 
-    def prepare(self, filename, smbdir):
-        f = open(filename, 'w')
+    # создание файла для обучения нейронной сети
+    def prepare(self):
+        trainpath = TRAINS_PATH + self.implemname + '.trn'
+        symbolpath = SYMBOLS_PATH + self.implemname
+        log.info('prepare(): trainpath: %s, symbolpath: %s' % colorize((trainpath, symbolpath)))
+
+        trainfile = open(trainpath, 'w')
 
         filter = re.compile(SYMBOL_FILTER)
         symbols = []
-        for name in os.listdir(smbdir):
+        for name in os.listdir(symbolpath):
             if filter.match(name):
                 symbols.append(name)
 
-        f.write('%d %d %d\n' % (len(symbols), self.inputNum, self.outputNum))
+        trainfile.write('%d %d %d\n' % (len(symbols), self.input, self.output))
 
 
         for name in symbols:
-            img = cvLoadImage(os.path.join(smbdir, name), CV_LOAD_IMAGE_GRAYSCALE)
+            img = cvLoadImage(SYMBOLS_PATH + self.implemname + '/' + name, CV_LOAD_IMAGE_GRAYSCALE)
             data = self.getdata(img)
-            f.write('%s\n' % ' '.join(map(str, data)))
+            trainfile.write('%s\n' % ' '.join(map(str, data)))
 
             c = name[0]
             n = self.charset.index(c)
-            f.write('-1 ' * n + '1' + ' -1' * (self.outputNum - n - 1) + '\n')
+            trainfile.write('-1 ' * n + '1' + ' -1' * (self.output - n - 1) + '\n')
 
-        f.close()
+        trainfile.close()
 
 
-    def train(self, filename):
-        self.ann.train_on_file(filename, self.maxEpochs, self.epochsBetweenReports, self.desiredError)
-        self.ann.save('/home/polzuka/inspirado/wmtake.ann')
+    # обучение нейронной сети на основе обучаещего файла
+    def train(self):
+        print 'satrt'
+        trainpath = TRAINS_PATH + self.implemname + '.trn'
+        netpath = NETS_PATH + self.implemname + '.ann'
+        log.info('prepare(): trainpath: %s, netpath: %s' % colorize((trainpath, netpath)))
+
+        self.ann.train_on_file(trainpath, self.maxEpochs, self.epochsBetweenReports, self.desiredError)
+        self.ann.save(netpath)
+        print 'satrt'
 
 
     def load(self, filename):

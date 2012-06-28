@@ -64,13 +64,17 @@ class Implem(Picker):
             #b.save(captcha, '/home/polzuka/inspirado/captcha/wmtake/%02d.gif' % i)
 
             log.debug('CAPTCHA TRANSFORMING')
-            t = Transformer('orig', b.image(captcha))
-            t.resizeby('resize', t['orig'], 2, 2)
-            t.grayscale('grayscale', t['resize'], 2)
-            t.binarize('binarize', t['grayscale'], 150, CV_THRESH_BINARY_INV)
+            try:
+                t = Transformer('orig', b.image(captcha))
+                t.resizeby('resize', t['orig'], 2, 2)
+                t.grayscale('grayscale', t['resize'], 2)
+                t.binarize('binarize', t['grayscale'], 150, CV_THRESH_BINARY_INV)
 
-            t.contourSplit('breaksplit', t['binarize'], 0.001)
-            if len(t.symbols) != symbolqty:
+                t.contourSplit('breaksplit', t['binarize'], 0.001)
+                if len(t.symbols) != symbolqty:
+                    raise Exception
+            except Exception, e:
+                log.debug(e)
                 log.debug(colorize('INCORRECT SYMBOL NUMBER', RED))
                 log.debug('LOADING PAGE WITH WM BONUS')
                 b.get('http://wmtake.ru/m.base/bonus.php')
