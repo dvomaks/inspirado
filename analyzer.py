@@ -14,11 +14,15 @@ log = getlog('anayzer')
 # Нейронная сеть для распознавния капчи
 class Analyzer():
 
-    # implemname - имя реализации
+    # site - имя сайта
     # picsize - размер картинки, содержащей один символ (x, y)
     # charset - строка, содержащая все символы, встречающиеся в капче
-    def __init__(self, implemname, picsize, charset):
-        self.implemname = implemname
+    def __init__(self, site, picsize, charset):
+        self.site = site
+        self.trainpath = TRAINS_PATH + self.site + '.trn'
+        self.netpath = NETS_PATH + self.site + '.ann'
+        self.symbolpath = SYMBOLS_PATH + self.site
+
         self.charset = charset
         self.input = picsize[0] * picsize[1]
         self.output = len(charset)
@@ -34,8 +38,8 @@ class Analyzer():
         self.ann.set_activation_function_hidden(libfann.SIGMOID_SYMMETRIC_STEPWISE)
         self.ann.set_activation_function_output(libfann.SIGMOID_SYMMETRIC_STEPWISE)
 
-        log.info('init(): implemname: %s, size: %sx%s, charset: %s, input: %s, hidden: %s, output: %s' % 
-                 colorize((implemname, picsize[0], picsize[1], charset, self.input, self.hidden, self.output)))
+        log.info('init(): site: %s, size: %sx%s, charset: %s, input: %s, hidden: %s, output: %s' % 
+                 colorize((site, picsize[0], picsize[1], charset, self.input, self.hidden, self.output)))
  
 
     def getdata(self, img):
@@ -54,15 +58,13 @@ class Analyzer():
 
     # создание файла для обучения нейронной сети
     def prepare(self):
-        trainpath = TRAINS_PATH + self.implemname + '.trn'
-        symbolpath = SYMBOLS_PATH + self.implemname
-        log.info('prepare(): trainpath: %s, symbolpath: %s' % colorize((trainpath, symbolpath)))
+        log.info('prepare(): trainpath: %s, symbolpath: %s' % colorize((self.trainpath, self.symbolpath)))
 
         trainfile = open(trainpath, 'w')
 
         filter = re.compile(SYMBOL_FILTER)
         symbols = []
-        for name in os.listdir(symbolpath):
+        for name in os.listdir(self.symbolpath):
             if filter.match(name):
                 symbols.append(name)
 
@@ -70,7 +72,7 @@ class Analyzer():
 
 
         for name in symbols:
-            img = cvLoadImage(SYMBOLS_PATH + self.implemname + '/' + name, CV_LOAD_IMAGE_GRAYSCALE)
+            img = cvLoadImage(SYMBOLS_PATH + self.site + '/' + name, CV_LOAD_IMAGE_GRAYSCALE)
             data = self.getdata(img)
             trainfile.write('%s\n' % ' '.join(map(str, data)))
 
@@ -83,19 +85,15 @@ class Analyzer():
 
     # обучение нейронной сети на основе обучаещего файла
     def train(self):
-        print 'satrt'
-        trainpath = TRAINS_PATH + self.implemname + '.trn'
-        netpath = NETS_PATH + self.implemname + '.ann'
-        log.info('prepare(): trainpath: %s, netpath: %s' % colorize((trainpath, netpath)))
+        log.info('prepare(): trainpath: %s, netpath: %s' % colorize((self.trainpath, self.netpath)))
 
-        self.ann.train_on_file(trainpath, self.maxEpochs, self.epochsBetweenReports, self.desiredError)
-        self.ann.save(netpath)
-        print 'satrt'
+        self.ann.train_on_file(self.trainpath, self.maxEpochs, self.epochsBetweenReports, self.desiredError)
+        self.ann.save(self.netpath)
 
 
-    def load(self, filename):
-        self.ann.create_from_file(filename)
-        log.info('load(): from: %s' % colorize(filename))
+    def load(self):
+        self.ann.create_from_file(self.netpath)
+        log.info('load(): netpath: %s' % colorize(self.netpath))
 
 
     def symbol(self, data):

@@ -11,11 +11,15 @@ log = getlog('wmtake')
 
 class Implem(Picker):
 
-    size = (20, 30)
+    def init(self):
+        self.site = 'wmtake'
+        self.symsize = (20, 30)
+        self.symqty = 5
+        self.charset = '123456789'
+
 
     def runup(self):
         b = Browser()
-        symbolqty = 5
 
         for i in xrange(100):
             print i
@@ -36,7 +40,7 @@ class Implem(Picker):
             '''
 
             t.contourSplit('breaksplit', t['binarize'], 0.001)
-            if len(t.symbols) != symbolqty:
+            if len(t.symbols) != self.symbolqty:
                 continue
 
             t.normolize('origsplit', 'breaksplit', 20, 30)
@@ -49,11 +53,9 @@ class Implem(Picker):
         # создаем браузер, которым будем ходить по wmtake.ru
         b = Browser()
         # сщздаем анализатор, которым будем распознавать капчу
-        a = Analyzer(Implem.size, '123456789')
+        a = Analyzer(self.site, self.symsize, self.charset)
 
-        symbolqty = 5
-
-        a.load('/home/polzuka/inspirado/nets/wmtake.ann')
+        a.load()
         b.show()
         log.debug('LOADING PAGE WITH WM BONUS')
         b.get('http://wmtake.ru/m.base/bonus.php')
@@ -71,7 +73,7 @@ class Implem(Picker):
                 t.binarize('binarize', t['grayscale'], 150, CV_THRESH_BINARY_INV)
 
                 t.contourSplit('breaksplit', t['binarize'], 0.001)
-                if len(t.symbols) != symbolqty:
+                if len(t.symbols) != self.symqty:
                     raise Exception
             except Exception, e:
                 log.debug(e)
@@ -80,7 +82,7 @@ class Implem(Picker):
                 b.get('http://wmtake.ru/m.base/bonus.php')
                 continue
 
-            t.normolize('origsplit', 'breaksplit', Implem.size)
+            t.normolize('origsplit', 'breaksplit', self.symsize)
             symbols = t.slice('origsplit')
             log.debug('RECOGNITION CAPTCHA')
             code = a.captcha(symbols)
@@ -90,7 +92,7 @@ class Implem(Picker):
 
             log.debug('FILLING FIELDS')
             b.js("$('#scode').val('%s')" % code)
-            b.js("$('#purse').val('%s')" % self.info['purse'])
+            b.js("$('#purse').val('R%s')" % self.purse)
             b.js("$('div.news_box div.bn p').click()")
             b.sleep(10)
 

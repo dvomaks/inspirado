@@ -27,13 +27,13 @@ def run():
         #    continue
         for site in sites:
             print '* ', site
-            #site = dict({'implem': 'iptest'})
+            #site = dict({'implem': 'exchangecity'})
             process = QProcess()
             print 'start'
             result = process.execute(IMPLEM_PATH, [site['implem'], purse['pid']])
             print 'finishwith result = ', result
         
-        newnym()
+        #newnym()
     QApplication.exit()
 
 

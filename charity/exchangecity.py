@@ -14,14 +14,15 @@ log = getlog('exchangecity')
 
 class Implem(Picker):
 
-    name = 'exchangecity'
-    size = (20, 30)
-    charset = '123456789ABCDEFGHIJKLMNPQRSTUVWXYZ'
+    def init(self):
+        self.site = 'exchangecity'
+        self.symqty = 5
+        self.symsize = (20, 30)
+        self.charset = '123456789ABCDEFGHIJKLMNPQRSTUVWXYZ'
 
 
     def collect(self):
         b = Browser()
-        symbolqty = 5
 
         for i in xrange(100):
             log.info('LOAD PAGE WITH CAPTCHA')
@@ -43,7 +44,7 @@ class Implem(Picker):
 
             t.contourSplit('breaksplit', t['binarize'], 0.001)
 
-            if len(t.symbols) != symbolqty:
+            if len(t.symbols) != self.symqty:
                 log.debug(colorize('INCORRECT SYMBOL NUMBER', RED))
                 continue
 
@@ -53,7 +54,7 @@ class Implem(Picker):
 
 
     def analyze(self):
-        a = Analyzer(Implem.name, Implem.size, Implem.charset)
+        a = Analyzer(self.site, self.symsize, self.charset)
         a.prepare()
         a.train()
         self.quit()
@@ -64,18 +65,16 @@ class Implem(Picker):
         # создаем браузер, которым будем ходить по wmtake.ru
         b = Browser()
         # создаем анализатор, которым будем распознавать капчу
-        a = Analyzer(20, 30, '123456789ABCDEFGHIJKLMNPQRSTUVWXYZ')
+        a = Analyzer(self.site, self.symsize, self.charset)
 
-        symbolqty = 5
-
-        a.load('/home/polzuka/inspirado/nets/wmtake.ann')
+        a.load()
         b.show()
         log.debug('LOADING PAGE WITH WM BONUS')
-        b.get('http://wmtake.ru/m.base/bonus.php')
+        b.get('http://exchangecity.ru/?cmd=bonus')
 
         while(True):
             log.debug('SAVING CAPTCHA')
-            captcha = b.js('$("#scode-pic img")[0].src')
+            captcha = 'http://exchangecity.ru/include/anti_robot.php'
             #b.save(captcha, '/home/polzuka/inspirado/captcha/wmtake/%02d.gif' % i)
 
             log.debug('CAPTCHA TRANSFORMING')
@@ -85,13 +84,13 @@ class Implem(Picker):
             t.binarize('binarize', t['grayscale'], 150, CV_THRESH_BINARY_INV)
 
             t.contourSplit('breaksplit', t['binarize'], 0.001)
-            if len(t.symbols) != symbolqty:
+            if len(t.symbols) != self.symqty:
                 log.debug(colorize('INCORRECT SYMBOL NUMBER', RED))
                 log.debug('LOADING PAGE WITH WM BONUS')
-                b.get('http://wmtake.ru/m.base/bonus.php')
+                b.get('http://exchangecity.ru/?cmd=bonus')
                 continue
 
-            t.normolize('origsplit', 'breaksplit', 20, 30)
+            t.normolize('origsplit', 'breaksplit', self.symsize)
             symbols = t.slice('origsplit')
             log.debug('RECOGNITION CAPTCHA')
             code = a.captcha(symbols)
@@ -100,9 +99,9 @@ class Implem(Picker):
             print code
 
             log.debug('FILLING FIELDS')
-            b.js("$('#scode').val('%s')" % code)
-            b.js("$('#purse').val('%s')" % self.info['purse'])
-            b.js("$('div.news_box div.bn p').click()")
+            b.js("$('input[name = img]').val('%s')" % code)
+            b.js("$('input[name = WALLET_BONUS]').val('R%s')" % self.purse)
+            b.js("$('input[name = get_bonus]').click()")
             b.sleep(1000)
 
             if not b.js("$('#mess-exec:visible').length"):
@@ -117,6 +116,6 @@ class Implem(Picker):
 
 
 if __name__ == '__main__':
-    info = dict({'mode': 'analyze'})
-    implem = Implem(info)
+    implem = Implem()
+    implem.startpickup('168625933467')
     sys.exit(implem.exec_())
