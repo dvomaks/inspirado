@@ -69,10 +69,10 @@ class Implem(Picker):
 
         a.load()
         b.show()
-        log.debug('LOADING PAGE WITH WM BONUS')
-        b.get('http://exchangecity.ru/?cmd=bonus')
 
         while(True):
+            log.debug('LOADING PAGE WITH WM BONUS')
+            b.get('http://exchangecity.ru/?cmd=bonus')
             log.debug('SAVING CAPTCHA')
             captcha = 'http://exchangecity.ru/include/anti_robot.php'
             #b.save(captcha, '/home/polzuka/inspirado/captcha/wmtake/%02d.gif' % i)
@@ -81,13 +81,11 @@ class Implem(Picker):
             t = Transformer('orig', b.image(captcha))
             t.resizeby('resize', t['orig'], 2, 2)
             t.grayscale('grayscale', t['resize'], 2)
-            t.binarize('binarize', t['grayscale'], 150, CV_THRESH_BINARY_INV)
+            t.binarize('binarize', t['grayscale'], 200, CV_THRESH_BINARY_INV)
 
             t.contourSplit('breaksplit', t['binarize'], 0.001)
             if len(t.symbols) != self.symqty:
                 log.debug(colorize('INCORRECT SYMBOL NUMBER', RED))
-                log.debug('LOADING PAGE WITH WM BONUS')
-                b.get('http://exchangecity.ru/?cmd=bonus')
                 continue
 
             t.normolize('origsplit', 'breaksplit', self.symsize)
@@ -102,15 +100,13 @@ class Implem(Picker):
             b.js("$('input[name = img]').val('%s')" % code)
             b.js("$('input[name = WALLET_BONUS]').val('R%s')" % self.purse)
             b.js("$('input[name = get_bonus]').click()")
-            b.sleep(1000)
+            b.sleep(1)
 
-            if not b.js("$('#mess-exec:visible').length"):
+            if not b.js("$('font.textbl:contains(Вы получили бонус в размере)').length"):
                 log.debug('FINISH')
                 break
 
             log.debug('INCORRECT CAPCTHA RECOGNITION')
-            log.debug('LOADING PAGE WITH WM BONUS')
-            b.js("$('#mess-exec p').click()")
 
         self.quit()
 

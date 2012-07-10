@@ -64,6 +64,8 @@ def Ipl2QIm(iplimg):
 black = (0, 0, 0)
 white = (255, 255, 255)
 gray = (100, 100, 100)
+green = (0, 255, 0)
+red = (0, 0, 255)
 
 
 # класс - хранилище преобразований изображения
@@ -189,8 +191,10 @@ class Transformer(QObject):
         # cvFindContours портит изображение, на котором ищет контуры, поэтому создадим копию
         tmp = cvCloneImage(src)
         # На res нарисуем найденные контуры и прямоугольники, их ограничивающие
-        res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 1)
+        res = cvCreateImage(cvGetSize(src), IPL_DEPTH_8U, 3)
         self.transforms[key] = res
+        # площадь исходного изображения
+        srcarea = src.width * src.height * 1.
 
         # Ищем контуры
         num, contours = cvFindContours(tmp, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, (0, 0))
@@ -204,13 +208,11 @@ class Transformer(QObject):
             rect = cvBoundingRect(contour)
             pt1 = (rect.x, rect.y)
             pt2 = (rect.x + rect.width, rect.y + rect.height)
-
             area = rect.width * rect.height
-            areas[rect.x] = area
 
             # рисуем контур и обрамляющую рамку
-            cvRectangle(res, pt1, pt2, gray)
-            cvDrawContours(res, contour, white, white, 0)
+            cvRectangle(res, pt1, pt2, white)
+            cvDrawContours(res, contour, green, green, 0)
 
             # получаем область исходного изображения, на которой находится контур
             roi = cvGetSubRect(src, rect)
@@ -224,21 +226,21 @@ class Transformer(QObject):
             # на полученном изображении еще раз находим контуры (туда могли попасть обрезки других контуров)
             num, conts = cvFindContours(tmp, storage, sizeof_CvContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, (0, 0))
             # все обрезки закрашиваем черным
+            
             for cont in conts.hrange():
-                rect = cvBoundingRect(contour)
-                if rect.width * rect.height != area:
+                subrect = cvBoundingRect(cont)
+                if subrect.width * subrect.height != area:
                     cvDrawContours(cnt, cont, black, black, 0, -1)
+            
+            # сохраняем изображение с выделенным контуром,
+            # если площадь обрамляющего прямоугольника имеет достаточный размер
+            if area / srcarea > threshold and areas.setdefault(rect.x, 0) < area:
+                areas[rect.x] = area
+                messcontours[rect.x] = cnt
 
-            # сохраняем изображение с выделенным контуром
-            messcontours[rect.x] = cnt
-
-        # площадь исходного изображения
-        srcarea = src.width * src.height * 1.
 
         for k in sorted(messcontours.iterkeys()):
-            # считаем контур символом, если площадь обрамляющего прямоугольника имеет достаточный размер
-            if areas[k] / srcarea > threshold:
-                self.symbols.append(Transformer(key, Ipl2QIm(messcontours[k])))
+            self.symbols.append(Transformer(key, Ipl2QIm(messcontours[k])))
 
 
             #rect = cvMinAreaRect2(contour)
@@ -380,25 +382,29 @@ class Transformer(QObject):
 
 if __name__ == '__main__':
     app = QApplication([])
-    qimg = QImage('/home/polzuka/inspirado/captcha/wmtake/13.gif')
+    qimg = QImage('/home/polzuka/inspirado/symbols/smswebmoney/img.png')
     t = Transformer('orig', qimg)
+
     t.resizeby('resize', t['orig'], 3, 3)
     t.grayscale('grayscale', t['resize'], 2)
-    t.binarize('binarize', t['grayscale'], 100, CV_THRESH_BINARY_INV)
+    t.binarize('binarize', t['grayscale'], 200, CV_THRESH_BINARY_INV)
 
-    radius = 3
+    radius = 2
     kernel = cvCreateStructuringElementEx(radius * 2 + 1, radius * 2 + 1, radius, radius, CV_SHAPE_ELLIPSE)
+
     '''
     for i in xrange(7):
-        t.morphology('morphology%d' % i, t['binarize'], i, 5, kernel)
+        t.morphology('morphology%d' % i, t['binarize'], i, 1, kernel)
     '''
-    
+    t.morphology('morphology', t['binarize'], 0, 1, kernel)
+    '''
     try:
-        t.contourSplit('breaksplit', t['binarize'], 0.001)
+        t.contourSplit('breaksplit', t['morphology'], 0.001)
     except Exception, e:
-        print e
-    
-    t.normolize('origsplit', 'breaksplit', 20, 30)
+        print 'ololo', e
+    '''
+    t.contourSplit('breaksplit', t['morphology'], 0.01)
+    t.normolize('origsplit', 'breaksplit', (20, 30))
     #t.savesymbols('origsplit', '/home/polzuka/inspirado/symbols', 1)
     t.show()
     exit(app.exec_())
