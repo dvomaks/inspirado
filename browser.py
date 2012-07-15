@@ -150,7 +150,7 @@ class Browser(QWebPage):
     # сохранение высосанных данных (например картинок)
     # данные берутся из кеша по url'у  и сохраняются в path
     def save(self, url, path):
-        log.info('save(): %s to %s' % (colorize(url, path)))
+        log.info('save(): %s to %s' % (colorize((url, path))))
         file = QFile(path)
         cached = self.cache.data(QUrl(url)).readAll()
         if file.open(QIODevice.WriteOnly):

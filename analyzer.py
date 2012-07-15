@@ -60,7 +60,7 @@ class Analyzer():
     def prepare(self):
         log.info('prepare(): trainpath: %s, symbolpath: %s' % colorize((self.trainpath, self.symbolpath)))
 
-        trainfile = open(trainpath, 'w')
+        trainfile = open(self.trainpath, 'w')
 
         filter = re.compile(SYMBOL_FILTER)
         symbols = []
